@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { BarChart3, Boxes, LayoutDashboard, Package, Receipt, Settings, ShoppingBag, Store, Truck, Wallet } from "lucide-react";
+import { BarChart3, Boxes, LayoutDashboard, Package, Settings, ShoppingBag, Store, Truck, Wallet } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -89,4 +89,3 @@ export function AdminSidebar() {
   );
 }
 
-export { Receipt };
