@@ -6,12 +6,12 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { searchPublicProducts } from "@/lib/domain/catalog";
 import { categories } from "@/lib/domain/mock-data";
 
-type Search = { q?: string; categoria?: string };
+type Search = { q?: string | undefined; categoria?: string | undefined };
 
 export const Route = createFileRoute("/catalogo/productos")({
   validateSearch: (s: Record<string, unknown>): Search => ({
-    q: typeof s.q === "string" && s.q ? s.q : undefined,
-    categoria: typeof s.categoria === "string" && s.categoria ? s.categoria : undefined,
+    q: typeof s["q"] === "string" && s["q"] ? s["q"] : undefined,
+    categoria: typeof s["categoria"] === "string" && s["categoria"] ? s["categoria"] : undefined,
   }),
   head: () => ({
     meta: [

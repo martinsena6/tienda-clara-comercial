@@ -42,18 +42,18 @@ function ProductForm({ onDone }: { onDone: () => void }) {
   };
   return (
     <form onSubmit={submit} className="space-y-4 p-4">
-      <FormField label="Nombre" htmlFor="name" error={errors.name}><Input id="name" name="name" /></FormField>
-      <FormField label="Categoría" htmlFor="categoryId" error={errors.categoryId}>
+      <FormField label="Nombre" htmlFor="name" error={errors["name"]}><Input id="name" name="name" /></FormField>
+      <FormField label="Categoría" htmlFor="categoryId" error={errors["categoryId"]}>
         <select id="categoryId" name="categoryId" className="h-9 w-full rounded-md border bg-card px-3 text-sm" defaultValue="">
           <option value="" disabled>Elegir…</option>
           {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </FormField>
       <div className="grid grid-cols-2 gap-3">
-        <FormField label="Precio de venta" htmlFor="price" error={errors.price}><Input id="price" name="price" type="number" min={0} /></FormField>
-        <FormField label="Costo" htmlFor="cost" hint="Interno, no se publica" error={errors.cost}><Input id="cost" name="cost" type="number" min={0} /></FormField>
+        <FormField label="Precio de venta" htmlFor="price" error={errors["price"]}><Input id="price" name="price" type="number" min={0} /></FormField>
+        <FormField label="Costo" htmlFor="cost" hint="Interno, no se publica" error={errors["cost"]}><Input id="cost" name="cost" type="number" min={0} /></FormField>
       </div>
-      <FormField label="Stock mínimo" htmlFor="minStock" hint="El stock se carga con movimientos" error={errors.minStock}><Input id="minStock" name="minStock" type="number" min={0} defaultValue={0} /></FormField>
+      <FormField label="Stock mínimo" htmlFor="minStock" hint="El stock se carga con movimientos" error={errors["minStock"]}><Input id="minStock" name="minStock" type="number" min={0} defaultValue={0} /></FormField>
       <FormField label="Descripción" htmlFor="description"><Textarea id="description" name="description" rows={3} /></FormField>
       <Button type="submit" className="w-full">Guardar producto</Button>
     </form>

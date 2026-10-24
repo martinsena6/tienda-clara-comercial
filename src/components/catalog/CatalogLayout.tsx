@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { businessSettings } from "@/lib/domain/mock-data";
 import { useCart } from "@/lib/cart";
 
-export function SearchBar({ defaultValue = "", className }: { defaultValue?: string; className?: string }) {
+export function SearchBar({ defaultValue = "", className }: { defaultValue?: string | undefined; className?: string }) {
   const [q, setQ] = useState(defaultValue);
   const navigate = useNavigate();
   const submit = (e: FormEvent) => {
