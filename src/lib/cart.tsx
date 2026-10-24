@@ -63,8 +63,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 
+// Valor seguro si el proveedor no está disponible (p. ej. tras una recarga parcial en desarrollo),
+// para que la página nunca quede en blanco.
+const EMPTY_CART: CartContextValue = {
+  lines: [],
+  count: 0,
+  total: 0,
+  add: () => {},
+  setQuantity: () => {},
+  remove: () => {},
+  clear: () => {},
+};
+
 export function useCart() {
   const ctx = useContext(CartContext);
-  if (!ctx) throw new Error("useCart debe usarse dentro de CartProvider");
+  if (!ctx) {
+    if (import.meta.env.DEV) console.warn("useCart se usó fuera de CartProvider");
+    return EMPTY_CART;
+  }
   return ctx;
 }
