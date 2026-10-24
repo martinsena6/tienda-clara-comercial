@@ -5,7 +5,7 @@ import { buildWhatsAppMessage } from "../whatsapp";
 
 describe("catálogo público", () => {
   it("no expone costo, proveedor ni stock", () => {
-    const pub = toPublicProduct(products[0]) as unknown as Record<string, unknown>;
+    const pub = toPublicProduct(products[0]!) as unknown as Record<string, unknown>;
     expect(pub).not.toHaveProperty("cost");
     expect(pub).not.toHaveProperty("supplier");
     expect(pub).not.toHaveProperty("stock");
@@ -13,8 +13,8 @@ describe("catálogo público", () => {
   });
 
   it("usa el mismo precio que el producto interno (fuente única)", () => {
-    const pub = getPublicProducts().find((p) => p.slug === products[1].slug);
-    expect(pub?.price).toBe(products[1].price);
+    const pub = getPublicProducts().find((p) => p.slug === products[1]!.slug);
+    expect(pub?.price).toBe(products[1]!.price);
   });
 
   it("calcula la disponibilidad", () => {

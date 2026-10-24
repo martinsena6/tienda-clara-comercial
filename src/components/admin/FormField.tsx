@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Label } from "@/components/ui/label";
 
-export function FormField({ label, htmlFor, hint, error, children }: { label: string; htmlFor: string; hint?: string; error?: string; children: ReactNode }) {
+export function FormField({ label, htmlFor, hint, error, children }: { label: string; htmlFor: string; hint?: string | undefined; error?: string | undefined; children: ReactNode }) {
   return (
     <div className="space-y-1.5">
       <Label htmlFor={htmlFor}>{label}</Label>
