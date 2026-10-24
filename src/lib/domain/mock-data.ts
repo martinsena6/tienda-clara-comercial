@@ -1,9 +1,19 @@
 // Datos de ejemplo: ÚNICA fuente de productos y precios en esta etapa.
 // Será reemplazada por la base de datos sin cambiar las pantallas.
-import taza from "@/assets/p-taza.jpg";
-import cafe from "@/assets/p-cafe.jpg";
-import bolso from "@/assets/p-bolso.jpg";
-import vela from "@/assets/p-vela.jpg";
+import combo_misky_10 from "@/assets/combo-misky-10.jpg.asset.json";
+import combo_misky_20 from "@/assets/combo-misky-20.jpg.asset.json";
+import combo_eco_10 from "@/assets/combo-eco-10.jpg.asset.json";
+import combo_eco_20 from "@/assets/combo-eco-20.jpg.asset.json";
+import combo_eco_40 from "@/assets/combo-eco-40.jpg.asset.json";
+import bola_loca_futbol from "@/assets/bola-loca-futbol.jpg.asset.json";
+import chupetin_emoji from "@/assets/chupetin-emoji.jpg.asset.json";
+import chupetin_cebollita from "@/assets/chupetin-cebollita.jpg.asset.json";
+import chupetin_pico_dulce from "@/assets/chupetin-pico-dulce.jpg.asset.json";
+import goma_mogul_anillos from "@/assets/goma-mogul-anillos.jpg.asset.json";
+import docigoma_gajo from "@/assets/docigoma-gajo.jpg.asset.json";
+import goma_ricomas_jelly from "@/assets/goma-ricomas-jelly.jpg.asset.json";
+import goma_pinata from "@/assets/goma-pinata.jpg.asset.json";
+import goma_fierita_roll from "@/assets/goma-fierita-roll.jpg.asset.json";
 import type {
   BusinessSettings,
   Category,
@@ -15,27 +25,38 @@ import type {
 } from "./types";
 
 export const businessSettings: BusinessSettings = {
-  name: "Almacén Norte",
-  whatsapp: "5491100000000",
-  email: "hola@almacennorte.com",
-  address: "Av. Siempre Viva 742, Buenos Aires",
+  name: "Festiva",
+  whatsapp: "5493625436293",
+  email: "festiva.shop@ejemplo.com",
+  address: "Salta 124, Galería Mariana, Local N°1",
   currency: "ARS",
 };
 
 export const categories: Category[] = [
-  { id: "c1", slug: "cocina", name: "Cocina" },
-  { id: "c2", slug: "cafe", name: "Café" },
-  { id: "c3", slug: "accesorios", name: "Accesorios" },
-  { id: "c4", slug: "hogar", name: "Hogar" },
+  { id: "c1", slug: "golosinas", name: "Golosinas y chicles" },
+  { id: "c2", slug: "chupetines", name: "Chupetines" },
+  { id: "c3", slug: "gomitas", name: "Gomitas" },
+  { id: "c4", slug: "combos", name: "Combos para fiestas" },
+  { id: "c5", slug: "cotillon", name: "Cotillón" },
 ];
 
+// Precios tomados de la lista de precios y de los carteles de combos.
+// Costos, proveedor y stock son provisorios hasta cargar los reales.
 export const products: Product[] = [
-  { id: "p1", slug: "taza-ceramica-salvia", name: "Taza de cerámica Salvia", categoryId: "c1", description: "Taza de 350 ml esmaltada a mano, apta lavavajillas.", image: taza, price: 8900, cost: 4200, supplier: "Cerámica del Sur", stock: 24, minStock: 5, active: true },
-  { id: "p2", slug: "cafe-especialidad-500", name: "Café de especialidad 500 g", categoryId: "c2", description: "Granos tostados de origen único, notas a chocolate y nuez.", image: cafe, price: 15400, cost: 9100, supplier: "Tostadero Andino", stock: 3, minStock: 6, active: true },
-  { id: "p3", slug: "cafe-molido-250", name: "Café molido 250 g", categoryId: "c2", description: "Molienda media, ideal para cafetera de filtro o italiana.", image: cafe, price: 8200, cost: 4700, supplier: "Tostadero Andino", stock: 18, minStock: 6, active: true },
-  { id: "p4", slug: "bolso-lino-natural", name: "Bolso de lino natural", categoryId: "c3", description: "Bolso amplio de lino resistente con asas reforzadas.", image: bolso, price: 12500, cost: 6000, supplier: "Textil Patagonia", stock: 0, minStock: 3, active: true },
-  { id: "p5", slug: "vela-soja-ambar", name: "Vela de soja Ámbar", categoryId: "c4", description: "Vela aromática en frasco de vidrio, 40 horas de duración.", image: vela, price: 9800, cost: 3900, supplier: "Aromas Libres", stock: 12, minStock: 4, active: true },
-  { id: "p6", slug: "vela-soja-grande", name: "Vela de soja grande", categoryId: "c4", description: "Versión grande con doble mecha, 70 horas de duración.", image: vela, price: 14600, cost: 6100, supplier: "Aromas Libres", stock: 2, minStock: 3, active: true },
+  { id: "p1", slug: "combo-10-misky", name: "Combo 10 Misky", categoryId: "c4", description: "10 alfajores Mogy, 10 turrones Misky, 10 chupetines Pelotitas, 10 bocaditos Bel y 20 masticables. 60 unidades.", image: combo_misky_10.url, price: 12600, cost: 8190.0, supplier: "A definir", stock: 8, minStock: 3, active: true },
+  { id: "p2", slug: "combo-20-misky", name: "Combo 20 Misky", categoryId: "c4", description: "20 alfajores Mogy, 20 turrones Misky, 20 chupetines Pelotitas, 20 bocaditos Bel y 40 masticables. 120 unidades.", image: combo_misky_20.url, price: 25100, cost: 16315.0, supplier: "A definir", stock: 5, minStock: 3, active: true },
+  { id: "p3", slug: "combo-10-economico", name: "Combo 10 Económico", categoryId: "c4", description: "10 alfajores Tinchito, 10 turrones Fulbito, 10 chupetines, 10 bocaditos Bel y 20 masticables. 60 unidades.", image: combo_eco_10.url, price: 9800, cost: 6370.0, supplier: "A definir", stock: 10, minStock: 3, active: true },
+  { id: "p4", slug: "combo-20-economico", name: "Combo 20 Económico", categoryId: "c4", description: "20 alfajores, 20 turrones, 20 chupetines, 20 bocaditos y 40 masticables. 120 unidades.", image: combo_eco_20.url, price: 19500, cost: 12675.0, supplier: "A definir", stock: 4, minStock: 3, active: true },
+  { id: "p5", slug: "combo-40-economico", name: "Combo 40 Económico", categoryId: "c4", description: "40 alfajores, 40 turrones, 40 chupetines, 40 bocaditos y 80 masticables. 240 unidades.", image: combo_eco_40.url, price: 39000, cost: 25350.0, supplier: "A definir", stock: 2, minStock: 3, active: true },
+  { id: "p6", slug: "bola-loca-futbol", name: "Bola Loca Fútbol", categoryId: "c1", description: "Chicles Bola Loca Fútbol Club, bolsa surtida.", image: bola_loca_futbol.url, price: 2871.65, cost: 1866.57, supplier: "A definir", stock: 15, minStock: 3, active: true },
+  { id: "p7", slug: "chupetin-emoji", name: "Chupetín Emoji", categoryId: "c2", description: "Chupetines Pop Emo con caritas, bolsa.", image: chupetin_emoji.url, price: 3955.02, cost: 2570.76, supplier: "A definir", stock: 12, minStock: 3, active: true },
+  { id: "p8", slug: "chupetin-cebollita", name: "Chupetín Cebollita", categoryId: "c2", description: "Chupetines Cebollitas Fútbol de Lheritier.", image: chupetin_cebollita.url, price: 1354.12, cost: 880.18, supplier: "A definir", stock: 20, minStock: 3, active: true },
+  { id: "p9", slug: "chupetin-pico-dulce", name: "Chupetín Pico Dulce", categoryId: "c2", description: "Caja de chupetines Pico Dulce, 24 unidades.", image: chupetin_pico_dulce.url, price: 4381.2, cost: 2847.78, supplier: "A definir", stock: 3, minStock: 3, active: true },
+  { id: "p10", slug: "goma-mogul-anillos", name: "Gomitas Mogul Anillos 1 kg", categoryId: "c3", description: "Gomitas Mogul en forma de anillo, bolsa de 1 kg.", image: goma_mogul_anillos.url, price: 9783, cost: 6358.95, supplier: "A definir", stock: 6, minStock: 3, active: true },
+  { id: "p11", slug: "docigoma-gajo", name: "Docigoma Gajo", categoryId: "c3", description: "Gomitas Docile en forma de gajo.", image: docigoma_gajo.url, price: 2698.29, cost: 1753.89, supplier: "A definir", stock: 10, minStock: 3, active: true },
+  { id: "p12", slug: "goma-ricomas-jelly", name: "Gomitas Ricomas Jelly Roll 500 g", categoryId: "c3", description: "Gomitas Ricomas de Misky, bolsa de 500 g.", image: goma_ricomas_jelly.url, price: 4030.91, cost: 2620.09, supplier: "A definir", stock: 0, minStock: 3, active: true },
+  { id: "p13", slug: "goma-pinata", name: "Gomitas La Piñata 700 g", categoryId: "c3", description: "Gomitas La Piñata anillos azucarados, 700 g.", image: goma_pinata.url, price: 4961.67, cost: 3225.09, supplier: "A definir", stock: 7, minStock: 3, active: true },
+  { id: "p14", slug: "goma-fierita-roll", name: "Gomitas Fierita Roll", categoryId: "c3", description: "Caja de gomitas Fierita en rollo.", image: goma_fierita_roll.url, price: 5342.89, cost: 3472.88, supplier: "A definir", stock: 4, minStock: 3, active: true },
 ];
 
 export const stockMovements: StockMovement[] = [
@@ -54,8 +75,8 @@ export const orders: Order[] = [
 ];
 
 export const purchases: Purchase[] = [
-  { id: "u1", supplier: "Cerámica del Sur", description: "20 tazas Salvia", total: 84000, date: "2026-10-18" },
-  { id: "u2", supplier: "Aromas Libres", description: "10 velas Ámbar", total: 39000, date: "2026-10-21" },
+  { id: "u1", supplier: "Distribuidora", description: "Mercadería surtida", total: 84000, date: "2026-10-18" },
+  { id: "u2", supplier: "Mayorista golosinas", description: "Gomitas surtidas", total: 39000, date: "2026-10-21" },
 ];
 
 export const expenses: Expense[] = [
