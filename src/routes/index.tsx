@@ -5,15 +5,17 @@ import { CatalogLayout } from "@/components/catalog/CatalogLayout";
 import { ProductCard } from "@/components/catalog/ProductCard";
 import { getPublicProducts } from "@/lib/domain/catalog";
 import { businessSettings, categories } from "@/lib/domain/mock-data";
-import heroImg from "@/assets/p-taza.jpg";
+import heroImg from "@/assets/festiva-portada.jpg.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: `${businessSettings.name} — Catálogo online` },
-      { name: "description", content: "Explorá nuestros productos, armá tu carrito y hacé tu pedido por WhatsApp." },
-      { property: "og:title", content: `${businessSettings.name} — Catálogo online` },
-      { property: "og:description", content: "Explorá nuestros productos y pedí por WhatsApp." },
+      { title: `${businessSettings.name} — Golosinas y cotillón` },
+      { name: "description", content: "Golosinas, chocolates, gomitas, combos y cotillón para tus fiestas. Pedí por WhatsApp." },
+      { property: "og:title", content: `${businessSettings.name} — Golosinas y cotillón` },
+      { property: "og:description", content: "Todo para festejar: golosinas, combos y cotillón." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Home,
@@ -25,15 +27,15 @@ function Home() {
     <CatalogLayout>
       <section className="grid items-center gap-8 overflow-hidden rounded-3xl bg-secondary p-6 sm:p-10 md:grid-cols-2">
         <div>
-          <span className="inline-block rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-foreground">Nueva temporada</span>
-          <h1 className="mt-4 text-4xl font-extrabold leading-tight sm:text-5xl">Objetos simples para todos los días.</h1>
+          <span className="inline-block rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-foreground">Todo para festejar</span>
+          <h1 className="mt-4 text-4xl font-extrabold leading-tight sm:text-5xl">Golosinas, combos y cotillón para tu fiesta.</h1>
           <p className="mt-4 max-w-md text-muted-foreground">Elegí tus productos, armá el carrito y envianos el pedido por WhatsApp. Te confirmamos disponibilidad al instante.</p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Button asChild size="lg"><Link to="/catalogo/productos">Ver productos <ArrowRight /></Link></Button>
             <Button asChild size="lg" variant="outline"><Link to="/catalogo/categorias">Categorías</Link></Button>
           </div>
         </div>
-        <img src={heroImg} alt="Taza de cerámica Salvia" width={816} height={816} className="mx-auto aspect-square w-full max-w-sm rounded-2xl object-cover shadow-lift" />
+        <img src={heroImg.url} alt="Festiva, todo para festejar" width={816} height={816} className="mx-auto aspect-square w-full max-w-sm rounded-2xl object-cover shadow-lift" />
       </section>
 
       <section className="mt-8 grid gap-3 sm:grid-cols-3">
