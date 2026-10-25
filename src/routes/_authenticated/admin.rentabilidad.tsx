@@ -7,7 +7,7 @@ import { marginPct, orderTotal } from "@/lib/domain/catalog";
 import { expenses, orders, products } from "@/lib/domain/mock-data";
 import { formatPrice } from "@/lib/format";
 
-export const Route = createFileRoute("/admin/rentabilidad")({
+export const Route = createFileRoute("/_authenticated/admin/rentabilidad")({
   head: () => ({
     meta: [
       { title: "Rentabilidad — Panel administrativo" },

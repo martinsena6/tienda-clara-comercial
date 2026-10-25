@@ -7,7 +7,7 @@ import { getAvailability, orderTotal } from "@/lib/domain/catalog";
 import { orders, products } from "@/lib/domain/mock-data";
 import { formatDate, formatPrice } from "@/lib/format";
 
-export const Route = createFileRoute("/admin/")({
+export const Route = createFileRoute("/_authenticated/admin/")({
   head: () => ({
     meta: [
       { title: "Inicio — Panel administrativo" },

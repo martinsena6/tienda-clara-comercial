@@ -12,7 +12,7 @@ import { orders } from "@/lib/domain/mock-data";
 import type { Order, OrderStatus } from "@/lib/domain/types";
 import { formatDate, formatPrice, orderStatusLabel } from "@/lib/format";
 
-export const Route = createFileRoute("/admin/ventas")({
+export const Route = createFileRoute("/_authenticated/admin/ventas")({
   head: () => ({
     meta: [
       { title: "Ventas — Panel administrativo" },

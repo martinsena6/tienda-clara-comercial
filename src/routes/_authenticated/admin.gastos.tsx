@@ -7,7 +7,7 @@ import { StatCard } from "@/components/admin/StatCard";
 import { expenses } from "@/lib/domain/mock-data";
 import { formatDate, formatPrice } from "@/lib/format";
 
-export const Route = createFileRoute("/admin/gastos")({
+export const Route = createFileRoute("/_authenticated/admin/gastos")({
   head: () => ({
     meta: [
       { title: "Gastos — Panel administrativo" },
