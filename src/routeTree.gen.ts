@@ -10,18 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AdminRouteImport } from './routes/admin'
-import { Route as AdminIndexRouteImport } from './routes/admin.index'
-import { Route as AdminComprasRouteImport } from './routes/admin.compras'
-import { Route as AdminConfiguracionRouteImport } from './routes/admin.configuracion'
-import { Route as AdminGastosRouteImport } from './routes/admin.gastos'
-import { Route as AdminProductosRouteImport } from './routes/admin.productos'
-import { Route as AdminRentabilidadRouteImport } from './routes/admin.rentabilidad'
-import { Route as AdminStockRouteImport } from './routes/admin.stock'
-import { Route as AdminVentasRouteImport } from './routes/admin.ventas'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as CatalogoCarritoRouteImport } from './routes/catalogo.carrito'
 import { Route as CatalogoCategoriasRouteImport } from './routes/catalogo.categorias'
 import { Route as CatalogoProductosRouteImport } from './routes/catalogo.productos'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as AuthenticatedAdminComprasRouteImport } from './routes/_authenticated/admin.compras'
+import { Route as AuthenticatedAdminConfiguracionRouteImport } from './routes/_authenticated/admin.configuracion'
+import { Route as AuthenticatedAdminGastosRouteImport } from './routes/_authenticated/admin.gastos'
+import { Route as AuthenticatedAdminProductosRouteImport } from './routes/_authenticated/admin.productos'
+import { Route as AuthenticatedAdminRentabilidadRouteImport } from './routes/_authenticated/admin.rentabilidad'
+import { Route as AuthenticatedAdminStockRouteImport } from './routes/_authenticated/admin.stock'
+import { Route as AuthenticatedAdminVentasRouteImport } from './routes/_authenticated/admin.ventas'
 import { Route as CatalogoProductoSlugRouteImport } from './routes/catalogo.producto.$slug'
 
 const IndexRoute = IndexRouteImport.update({
@@ -29,50 +29,10 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/_authenticated/admin',
   path: '/admin',
   getParentRoute: () => rootRouteImport,
-} as any)
-const AdminIndexRoute = AdminIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminComprasRoute = AdminComprasRouteImport.update({
-  id: '/compras',
-  path: '/compras',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminConfiguracionRoute = AdminConfiguracionRouteImport.update({
-  id: '/configuracion',
-  path: '/configuracion',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminGastosRoute = AdminGastosRouteImport.update({
-  id: '/gastos',
-  path: '/gastos',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminProductosRoute = AdminProductosRouteImport.update({
-  id: '/productos',
-  path: '/productos',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminRentabilidadRoute = AdminRentabilidadRouteImport.update({
-  id: '/rentabilidad',
-  path: '/rentabilidad',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminStockRoute = AdminStockRouteImport.update({
-  id: '/stock',
-  path: '/stock',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminVentasRoute = AdminVentasRouteImport.update({
-  id: '/ventas',
-  path: '/ventas',
-  getParentRoute: () => AdminRoute,
 } as any)
 const CatalogoCarritoRoute = CatalogoCarritoRouteImport.update({
   id: '/catalogo/carrito',
@@ -89,6 +49,52 @@ const CatalogoProductosRoute = CatalogoProductosRouteImport.update({
   path: '/catalogo/productos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const AuthenticatedAdminComprasRoute =
+  AuthenticatedAdminComprasRouteImport.update({
+    id: '/compras',
+    path: '/compras',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminConfiguracionRoute =
+  AuthenticatedAdminConfiguracionRouteImport.update({
+    id: '/configuracion',
+    path: '/configuracion',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminGastosRoute =
+  AuthenticatedAdminGastosRouteImport.update({
+    id: '/gastos',
+    path: '/gastos',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminProductosRoute =
+  AuthenticatedAdminProductosRouteImport.update({
+    id: '/productos',
+    path: '/productos',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminRentabilidadRoute =
+  AuthenticatedAdminRentabilidadRouteImport.update({
+    id: '/rentabilidad',
+    path: '/rentabilidad',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminStockRoute = AuthenticatedAdminStockRouteImport.update({
+  id: '/stock',
+  path: '/stock',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const AuthenticatedAdminVentasRoute =
+  AuthenticatedAdminVentasRouteImport.update({
+    id: '/ventas',
+    path: '/ventas',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const CatalogoProductoSlugRoute = CatalogoProductoSlugRouteImport.update({
   id: '/catalogo/producto/$slug',
   path: '/catalogo/producto/$slug',
@@ -97,57 +103,60 @@ const CatalogoProductoSlugRoute = CatalogoProductoSlugRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
-  '/admin/compras': typeof AdminComprasRoute
-  '/admin/configuracion': typeof AdminConfiguracionRoute
-  '/admin/gastos': typeof AdminGastosRoute
-  '/admin/productos': typeof AdminProductosRoute
-  '/admin/rentabilidad': typeof AdminRentabilidadRoute
-  '/admin/stock': typeof AdminStockRoute
-  '/admin/ventas': typeof AdminVentasRoute
+  '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/catalogo/carrito': typeof CatalogoCarritoRoute
   '/catalogo/categorias': typeof CatalogoCategoriasRoute
   '/catalogo/productos': typeof CatalogoProductosRoute
-  '/admin/': typeof AdminIndexRoute
+  '/admin/compras': typeof AuthenticatedAdminComprasRoute
+  '/admin/configuracion': typeof AuthenticatedAdminConfiguracionRoute
+  '/admin/gastos': typeof AuthenticatedAdminGastosRoute
+  '/admin/productos': typeof AuthenticatedAdminProductosRoute
+  '/admin/rentabilidad': typeof AuthenticatedAdminRentabilidadRoute
+  '/admin/stock': typeof AuthenticatedAdminStockRoute
+  '/admin/ventas': typeof AuthenticatedAdminVentasRoute
   '/catalogo/producto/$slug': typeof CatalogoProductoSlugRoute
+  '/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin/compras': typeof AdminComprasRoute
-  '/admin/configuracion': typeof AdminConfiguracionRoute
-  '/admin/gastos': typeof AdminGastosRoute
-  '/admin/productos': typeof AdminProductosRoute
-  '/admin/rentabilidad': typeof AdminRentabilidadRoute
-  '/admin/stock': typeof AdminStockRoute
-  '/admin/ventas': typeof AdminVentasRoute
   '/catalogo/carrito': typeof CatalogoCarritoRoute
   '/catalogo/categorias': typeof CatalogoCategoriasRoute
   '/catalogo/productos': typeof CatalogoProductosRoute
-  '/admin': typeof AdminIndexRoute
+  '/admin/compras': typeof AuthenticatedAdminComprasRoute
+  '/admin/configuracion': typeof AuthenticatedAdminConfiguracionRoute
+  '/admin/gastos': typeof AuthenticatedAdminGastosRoute
+  '/admin/productos': typeof AuthenticatedAdminProductosRoute
+  '/admin/rentabilidad': typeof AuthenticatedAdminRentabilidadRoute
+  '/admin/stock': typeof AuthenticatedAdminStockRoute
+  '/admin/ventas': typeof AuthenticatedAdminVentasRoute
   '/catalogo/producto/$slug': typeof CatalogoProductoSlugRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
-  '/admin/compras': typeof AdminComprasRoute
-  '/admin/configuracion': typeof AdminConfiguracionRoute
-  '/admin/gastos': typeof AdminGastosRoute
-  '/admin/productos': typeof AdminProductosRoute
-  '/admin/rentabilidad': typeof AdminRentabilidadRoute
-  '/admin/stock': typeof AdminStockRoute
-  '/admin/ventas': typeof AdminVentasRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/catalogo/carrito': typeof CatalogoCarritoRoute
   '/catalogo/categorias': typeof CatalogoCategoriasRoute
   '/catalogo/productos': typeof CatalogoProductosRoute
-  '/admin/': typeof AdminIndexRoute
+  '/_authenticated/admin/compras': typeof AuthenticatedAdminComprasRoute
+  '/_authenticated/admin/configuracion': typeof AuthenticatedAdminConfiguracionRoute
+  '/_authenticated/admin/gastos': typeof AuthenticatedAdminGastosRoute
+  '/_authenticated/admin/productos': typeof AuthenticatedAdminProductosRoute
+  '/_authenticated/admin/rentabilidad': typeof AuthenticatedAdminRentabilidadRoute
+  '/_authenticated/admin/stock': typeof AuthenticatedAdminStockRoute
+  '/_authenticated/admin/ventas': typeof AuthenticatedAdminVentasRoute
   '/catalogo/producto/$slug': typeof CatalogoProductoSlugRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/admin'
+    | '/catalogo/carrito'
+    | '/catalogo/categorias'
+    | '/catalogo/productos'
     | '/admin/compras'
     | '/admin/configuracion'
     | '/admin/gastos'
@@ -155,14 +164,14 @@ export interface FileRouteTypes {
     | '/admin/rentabilidad'
     | '/admin/stock'
     | '/admin/ventas'
-    | '/catalogo/carrito'
-    | '/catalogo/categorias'
-    | '/catalogo/productos'
-    | '/admin/'
     | '/catalogo/producto/$slug'
+    | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/catalogo/carrito'
+    | '/catalogo/categorias'
+    | '/catalogo/productos'
     | '/admin/compras'
     | '/admin/configuracion'
     | '/admin/gastos'
@@ -170,32 +179,29 @@ export interface FileRouteTypes {
     | '/admin/rentabilidad'
     | '/admin/stock'
     | '/admin/ventas'
-    | '/catalogo/carrito'
-    | '/catalogo/categorias'
-    | '/catalogo/productos'
-    | '/admin'
     | '/catalogo/producto/$slug'
+    | '/admin'
   id:
     | '__root__'
     | '/'
-    | '/admin'
-    | '/admin/compras'
-    | '/admin/configuracion'
-    | '/admin/gastos'
-    | '/admin/productos'
-    | '/admin/rentabilidad'
-    | '/admin/stock'
-    | '/admin/ventas'
+    | '/_authenticated/admin'
     | '/catalogo/carrito'
     | '/catalogo/categorias'
     | '/catalogo/productos'
-    | '/admin/'
+    | '/_authenticated/admin/compras'
+    | '/_authenticated/admin/configuracion'
+    | '/_authenticated/admin/gastos'
+    | '/_authenticated/admin/productos'
+    | '/_authenticated/admin/rentabilidad'
+    | '/_authenticated/admin/stock'
+    | '/_authenticated/admin/ventas'
     | '/catalogo/producto/$slug'
+    | '/_authenticated/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRouteWithChildren
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   CatalogoCarritoRoute: typeof CatalogoCarritoRoute
   CatalogoCategoriasRoute: typeof CatalogoCategoriasRoute
   CatalogoProductosRoute: typeof CatalogoProductosRoute
@@ -211,68 +217,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin': {
-      id: '/admin'
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
       path: '/admin'
       fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/admin/': {
-      id: '/admin/'
-      path: '/'
-      fullPath: '/admin/'
-      preLoaderRoute: typeof AdminIndexRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/compras': {
-      id: '/admin/compras'
-      path: '/compras'
-      fullPath: '/admin/compras'
-      preLoaderRoute: typeof AdminComprasRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/configuracion': {
-      id: '/admin/configuracion'
-      path: '/configuracion'
-      fullPath: '/admin/configuracion'
-      preLoaderRoute: typeof AdminConfiguracionRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/gastos': {
-      id: '/admin/gastos'
-      path: '/gastos'
-      fullPath: '/admin/gastos'
-      preLoaderRoute: typeof AdminGastosRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/productos': {
-      id: '/admin/productos'
-      path: '/productos'
-      fullPath: '/admin/productos'
-      preLoaderRoute: typeof AdminProductosRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/rentabilidad': {
-      id: '/admin/rentabilidad'
-      path: '/rentabilidad'
-      fullPath: '/admin/rentabilidad'
-      preLoaderRoute: typeof AdminRentabilidadRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/stock': {
-      id: '/admin/stock'
-      path: '/stock'
-      fullPath: '/admin/stock'
-      preLoaderRoute: typeof AdminStockRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/ventas': {
-      id: '/admin/ventas'
-      path: '/ventas'
-      fullPath: '/admin/ventas'
-      preLoaderRoute: typeof AdminVentasRouteImport
-      parentRoute: typeof AdminRoute
     }
     '/catalogo/carrito': {
       id: '/catalogo/carrito'
@@ -295,6 +245,62 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CatalogoProductosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/compras': {
+      id: '/_authenticated/admin/compras'
+      path: '/compras'
+      fullPath: '/admin/compras'
+      preLoaderRoute: typeof AuthenticatedAdminComprasRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/configuracion': {
+      id: '/_authenticated/admin/configuracion'
+      path: '/configuracion'
+      fullPath: '/admin/configuracion'
+      preLoaderRoute: typeof AuthenticatedAdminConfiguracionRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/gastos': {
+      id: '/_authenticated/admin/gastos'
+      path: '/gastos'
+      fullPath: '/admin/gastos'
+      preLoaderRoute: typeof AuthenticatedAdminGastosRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/productos': {
+      id: '/_authenticated/admin/productos'
+      path: '/productos'
+      fullPath: '/admin/productos'
+      preLoaderRoute: typeof AuthenticatedAdminProductosRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/rentabilidad': {
+      id: '/_authenticated/admin/rentabilidad'
+      path: '/rentabilidad'
+      fullPath: '/admin/rentabilidad'
+      preLoaderRoute: typeof AuthenticatedAdminRentabilidadRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/stock': {
+      id: '/_authenticated/admin/stock'
+      path: '/stock'
+      fullPath: '/admin/stock'
+      preLoaderRoute: typeof AuthenticatedAdminStockRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/ventas': {
+      id: '/_authenticated/admin/ventas'
+      path: '/ventas'
+      fullPath: '/admin/ventas'
+      preLoaderRoute: typeof AuthenticatedAdminVentasRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/catalogo/producto/$slug': {
       id: '/catalogo/producto/$slug'
       path: '/catalogo/producto/$slug'
@@ -305,33 +311,34 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AdminRouteChildren {
-  AdminComprasRoute: typeof AdminComprasRoute
-  AdminConfiguracionRoute: typeof AdminConfiguracionRoute
-  AdminGastosRoute: typeof AdminGastosRoute
-  AdminProductosRoute: typeof AdminProductosRoute
-  AdminRentabilidadRoute: typeof AdminRentabilidadRoute
-  AdminStockRoute: typeof AdminStockRoute
-  AdminVentasRoute: typeof AdminVentasRoute
-  AdminIndexRoute: typeof AdminIndexRoute
+interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminComprasRoute: typeof AuthenticatedAdminComprasRoute
+  AuthenticatedAdminConfiguracionRoute: typeof AuthenticatedAdminConfiguracionRoute
+  AuthenticatedAdminGastosRoute: typeof AuthenticatedAdminGastosRoute
+  AuthenticatedAdminProductosRoute: typeof AuthenticatedAdminProductosRoute
+  AuthenticatedAdminRentabilidadRoute: typeof AuthenticatedAdminRentabilidadRoute
+  AuthenticatedAdminStockRoute: typeof AuthenticatedAdminStockRoute
+  AuthenticatedAdminVentasRoute: typeof AuthenticatedAdminVentasRoute
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
 
-const AdminRouteChildren: AdminRouteChildren = {
-  AdminComprasRoute: AdminComprasRoute,
-  AdminConfiguracionRoute: AdminConfiguracionRoute,
-  AdminGastosRoute: AdminGastosRoute,
-  AdminProductosRoute: AdminProductosRoute,
-  AdminRentabilidadRoute: AdminRentabilidadRoute,
-  AdminStockRoute: AdminStockRoute,
-  AdminVentasRoute: AdminVentasRoute,
-  AdminIndexRoute: AdminIndexRoute,
+const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminComprasRoute: AuthenticatedAdminComprasRoute,
+  AuthenticatedAdminConfiguracionRoute: AuthenticatedAdminConfiguracionRoute,
+  AuthenticatedAdminGastosRoute: AuthenticatedAdminGastosRoute,
+  AuthenticatedAdminProductosRoute: AuthenticatedAdminProductosRoute,
+  AuthenticatedAdminRentabilidadRoute: AuthenticatedAdminRentabilidadRoute,
+  AuthenticatedAdminStockRoute: AuthenticatedAdminStockRoute,
+  AuthenticatedAdminVentasRoute: AuthenticatedAdminVentasRoute,
+  AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
 }
 
-const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+const AuthenticatedAdminRouteWithChildren =
+  AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRouteWithChildren,
+  AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   CatalogoCarritoRoute: CatalogoCarritoRoute,
   CatalogoCategoriasRoute: CatalogoCategoriasRoute,
   CatalogoProductosRoute: CatalogoProductosRoute,
