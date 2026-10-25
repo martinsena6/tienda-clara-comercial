@@ -15,7 +15,7 @@ import { categories, products } from "@/lib/domain/mock-data";
 import { formatPrice } from "@/lib/format";
 import { productSchema } from "@/lib/validation";
 
-export const Route = createFileRoute("/admin/productos")({
+export const Route = createFileRoute("/_authenticated/admin/productos")({
   head: () => ({
     meta: [
       { title: "Productos — Panel administrativo" },

@@ -7,7 +7,7 @@ import { getAvailability, productName } from "@/lib/domain/catalog";
 import { products, stockMovements } from "@/lib/domain/mock-data";
 import { formatDate, movementLabel } from "@/lib/format";
 
-export const Route = createFileRoute("/admin/stock")({
+export const Route = createFileRoute("/_authenticated/admin/stock")({
   head: () => ({
     meta: [
       { title: "Stock — Panel administrativo" },

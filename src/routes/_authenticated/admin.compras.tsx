@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/admin/PageHeader";
 import { purchases } from "@/lib/domain/mock-data";
 import { formatDate, formatPrice } from "@/lib/format";
 
-export const Route = createFileRoute("/admin/compras")({
+export const Route = createFileRoute("/_authenticated/admin/compras")({
   head: () => ({
     meta: [
       { title: "Compras — Panel administrativo" },

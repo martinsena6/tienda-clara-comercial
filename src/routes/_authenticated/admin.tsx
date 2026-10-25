@@ -3,7 +3,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 
 // Próxima etapa: proteger con inicio de sesión y roles (admin / vendedor).
-export const Route = createFileRoute("/admin")({
+export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ name: "robots", content: "noindex" }] }),
   component: AdminLayout,
 });

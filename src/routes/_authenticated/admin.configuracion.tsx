@@ -6,7 +6,7 @@ import { FormField } from "@/components/admin/FormField";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { businessSettings } from "@/lib/domain/mock-data";
 
-export const Route = createFileRoute("/admin/configuracion")({
+export const Route = createFileRoute("/_authenticated/admin/configuracion")({
   head: () => ({
     meta: [
       { title: "Configuración — Panel administrativo" },
