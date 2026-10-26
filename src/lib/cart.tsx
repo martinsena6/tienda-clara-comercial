@@ -1,16 +1,9 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { getPublicProducts } from "./domain/catalog";
-import type { PublicProduct } from "./domain/types";
-
-interface CartLine {
-  product: PublicProduct;
-  quantity: number;
-}
 
 interface CartContextValue {
-  lines: CartLine[];
+  /** Solo guarda slug y cantidad; los precios siempre se leen de la base. */
+  items: Record<string, number>;
   count: number;
-  total: number;
   add: (slug: string) => void;
   setQuantity: (slug: string, qty: number) => void;
   remove: (slug: string) => void;
@@ -38,16 +31,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (loaded) localStorage.setItem(KEY, JSON.stringify(items));
   }, [items, loaded]);
 
-  const value = useMemo<CartContextValue>(() => {
-    // Los precios siempre se leen de la fuente única, nunca se guardan en el carrito.
-    const all = getPublicProducts();
-    const lines = Object.entries(items)
-      .map(([slug, quantity]) => ({ product: all.find((p) => p.slug === slug)!, quantity }))
-      .filter((l) => l.product && l.quantity > 0);
-    return {
-      lines,
-      count: lines.reduce((s, l) => s + l.quantity, 0),
-      total: lines.reduce((s, l) => s + l.quantity * l.product.price, 0),
+  const value = useMemo<CartContextValue>(
+    () => ({
+      items,
+      count: Object.values(items).reduce((s, q) => s + q, 0),
       add: (slug) => setItems((p) => ({ ...p, [slug]: (p[slug] ?? 0) + 1 })),
       setQuantity: (slug, qty) => setItems((p) => ({ ...p, [slug]: Math.max(1, qty) })),
       remove: (slug) =>
@@ -57,8 +44,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
           return n;
         }),
       clear: () => setItems({}),
-    };
-  }, [items]);
+    }),
+    [items],
+  );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
@@ -66,9 +54,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
 // Valor seguro si el proveedor no está disponible (p. ej. tras una recarga parcial en desarrollo),
 // para que la página nunca quede en blanco.
 const EMPTY_CART: CartContextValue = {
-  lines: [],
+  items: {},
   count: 0,
-  total: 0,
   add: () => {},
   setQuantity: () => {},
   remove: () => {},
