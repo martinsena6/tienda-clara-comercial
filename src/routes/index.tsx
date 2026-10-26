@@ -1,28 +1,36 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, MessageCircle, ShieldCheck, Truck } from "lucide-react";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { CatalogLayout } from "@/components/catalog/CatalogLayout";
 import { ProductCard } from "@/components/catalog/ProductCard";
-import { getPublicProducts } from "@/lib/domain/catalog";
-import { businessSettings, categories } from "@/lib/domain/mock-data";
+import { categoriesQuery, publicProductsQuery } from "@/lib/data";
 import heroImg from "@/assets/festiva-portada.jpg.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: `${businessSettings.name} — Golosinas y cotillón` },
+      { title: "Festiva — Golosinas y cotillón" },
       { name: "description", content: "Golosinas, chocolates, gomitas, combos y cotillón para tus fiestas. Pedí por WhatsApp." },
-      { property: "og:title", content: `${businessSettings.name} — Golosinas y cotillón` },
+      { property: "og:title", content: "Festiva — Golosinas y cotillón" },
       { property: "og:description", content: "Todo para festejar: golosinas, combos y cotillón." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
+  loader: ({ context }) => context.queryClient.ensureQueryData(publicProductsQuery),
+  errorComponent: ({ error }) => (
+    <CatalogLayout>
+      <p role="alert" className="text-center text-muted-foreground">No pudimos cargar el catálogo. {error instanceof Error ? error.message : ""}</p>
+    </CatalogLayout>
+  ),
   component: Home,
 });
 
 function Home() {
-  const featured = getPublicProducts().slice(0, 4);
+  const { data: products } = useSuspenseQuery(publicProductsQuery);
+  const { data: categories } = useQuery(categoriesQuery);
+  const featured = products.slice(0, 4);
   return (
     <CatalogLayout>
       <section className="grid items-center gap-8 overflow-hidden rounded-3xl bg-secondary p-6 sm:p-10 md:grid-cols-2">
@@ -54,7 +62,7 @@ function Home() {
       <section className="mt-12">
         <h2 className="text-xl font-bold">Categorías</h2>
         <div className="mt-4 flex flex-wrap gap-2">
-          {categories.map((c) => (
+          {(categories ?? []).map((c) => (
             <Link key={c.id} to="/catalogo/productos" search={{ categoria: c.slug }} className="rounded-full border bg-card px-4 py-1.5 text-sm hover:bg-muted">{c.name}</Link>
           ))}
         </div>

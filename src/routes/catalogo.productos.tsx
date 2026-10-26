@@ -1,10 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { SearchX } from "lucide-react";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { CatalogLayout, SearchBar } from "@/components/catalog/CatalogLayout";
 import { CategoryChip, ProductCard } from "@/components/catalog/ProductCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { searchPublicProducts } from "@/lib/domain/catalog";
-import { categories } from "@/lib/domain/mock-data";
+import { categoriesQuery, publicProductsQuery } from "@/lib/data";
 
 type Search = { q?: string | undefined; categoria?: string | undefined };
 
@@ -15,19 +16,27 @@ export const Route = createFileRoute("/catalogo/productos")({
   }),
   head: () => ({
     meta: [
-      { title: "Productos — Catálogo" },
+      { title: "Productos — Catálogo Festiva" },
       { name: "description", content: "Todos nuestros productos con precio y disponibilidad." },
-      { property: "og:title", content: "Productos — Catálogo" },
+      { property: "og:title", content: "Productos — Catálogo Festiva" },
       { property: "og:description", content: "Todos nuestros productos con precio y disponibilidad." },
     ],
   }),
+  loader: ({ context }) => context.queryClient.ensureQueryData(publicProductsQuery),
+  errorComponent: ({ error }) => (
+    <CatalogLayout>
+      <p role="alert" className="text-center text-muted-foreground">No pudimos cargar los productos. {error instanceof Error ? error.message : ""}</p>
+    </CatalogLayout>
+  ),
   component: Productos,
 });
 
 function Productos() {
   const { q, categoria } = Route.useSearch();
   const navigate = useNavigate({ from: "/catalogo/productos" });
-  const results = searchPublicProducts(q, categoria);
+  const { data: products } = useSuspenseQuery(publicProductsQuery);
+  const { data: categories } = useSuspenseQuery(categoriesQuery);
+  const results = searchPublicProducts(products, q, categoria);
   return (
     <CatalogLayout>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
