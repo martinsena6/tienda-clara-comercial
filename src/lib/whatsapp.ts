@@ -7,11 +7,12 @@ export interface WhatsAppLine {
 }
 
 /** Arma el texto del pedido. El pedido queda PENDIENTE: no es una venta confirmada. */
-export function buildWhatsAppMessage(businessName: string, lines: WhatsAppLine[]): string {
+export function buildWhatsAppMessage(businessName: string, lines: WhatsAppLine[], orderNumber?: number): string {
   const total = lines.reduce((s, l) => s + l.quantity * l.price, 0);
   const detail = lines.map((l) => `• ${l.quantity} x ${l.name} — ${formatPrice(l.quantity * l.price)}`);
   return [
     `Hola ${businessName}, quiero hacer este pedido:`,
+    ...(orderNumber ? ["", `Pedido #${orderNumber}`] : []),
     "",
     ...detail,
     "",

@@ -1,22 +1,30 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { CatalogLayout } from "@/components/catalog/CatalogLayout";
-import { getPublicProducts } from "@/lib/domain/catalog";
-import { categories } from "@/lib/domain/mock-data";
+import { categoriesQuery, publicProductsQuery } from "@/lib/data";
 
 export const Route = createFileRoute("/catalogo/categorias")({
   head: () => ({
     meta: [
-      { title: "Categorías — Catálogo" },
+      { title: "Categorías — Catálogo Festiva" },
       { name: "description", content: "Navegá los productos por categoría." },
-      { property: "og:title", content: "Categorías — Catálogo" },
+      { property: "og:title", content: "Categorías — Catálogo Festiva" },
       { property: "og:description", content: "Navegá los productos por categoría." },
     ],
   }),
+  loader: ({ context }) =>
+    Promise.all([context.queryClient.ensureQueryData(categoriesQuery), context.queryClient.ensureQueryData(publicProductsQuery)]),
+  errorComponent: ({ error }) => (
+    <CatalogLayout>
+      <p role="alert" className="text-center text-muted-foreground">No pudimos cargar las categorías. {error instanceof Error ? error.message : ""}</p>
+    </CatalogLayout>
+  ),
   component: Categorias,
 });
 
 function Categorias() {
-  const all = getPublicProducts();
+  const { data: categories } = useSuspenseQuery(categoriesQuery);
+  const { data: all } = useSuspenseQuery(publicProductsQuery);
   return (
     <CatalogLayout>
       <h1 className="text-3xl font-bold">Categorías</h1>

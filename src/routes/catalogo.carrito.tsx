@@ -1,27 +1,76 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { MessageCircle, Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { CatalogLayout } from "@/components/catalog/CatalogLayout";
-import { WhatsAppButton } from "@/components/catalog/WhatsAppButton";
+import { Input } from "@/components/ui/input";
+import { FormField } from "@/components/admin/FormField";
+import { CatalogLayout, useSettings } from "@/components/catalog/CatalogLayout";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useCart } from "@/lib/cart";
+import { createOrder, errorMessage, publicProductsQuery } from "@/lib/data";
 import { formatPrice } from "@/lib/format";
+import { buildWhatsAppMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 export const Route = createFileRoute("/catalogo/carrito")({
   head: () => ({
     meta: [
-      { title: "Tu carrito — Catálogo" },
+      { title: "Tu carrito — Festiva" },
       { name: "description", content: "Revisá tu pedido y envialo por WhatsApp." },
-      { property: "og:title", content: "Tu carrito — Catálogo" },
+      { property: "og:title", content: "Tu carrito — Festiva" },
       { property: "og:description", content: "Revisá tu pedido y envialo por WhatsApp." },
       { name: "robots", content: "noindex" },
     ],
   }),
+  loader: ({ context }) => context.queryClient.ensureQueryData(publicProductsQuery),
+  errorComponent: ({ error }) => (
+    <CatalogLayout>
+      <p role="alert" className="text-center text-muted-foreground">No pudimos cargar el carrito. {error instanceof Error ? error.message : ""}</p>
+    </CatalogLayout>
+  ),
   component: Carrito,
 });
 
 function Carrito() {
-  const { lines, total, setQuantity, remove } = useCart();
+  const { items, setQuantity, remove, clear } = useCart();
+  const { data: products } = useSuspenseQuery(publicProductsQuery);
+  const settings = useSettings();
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const lines = Object.entries(items)
+    .map(([slug, quantity]) => ({ product: products.find((p) => p.slug === slug), quantity }))
+    .filter((l): l is { product: NonNullable<typeof l.product>; quantity: number } => Boolean(l.product) && l.quantity > 0);
+  const total = lines.reduce((s, l) => s + l.product.price * l.quantity, 0);
+
+  const send = async () => {
+    if (!name.trim()) {
+      toast.error("Ingresá tu nombre para registrar el pedido");
+      return;
+    }
+    setBusy(true);
+    try {
+      const order = await createOrder(
+        lines.map((l) => ({ slug: l.product.slug, quantity: l.quantity })),
+        name.trim(),
+      );
+      const message = buildWhatsAppMessage(
+        settings.name,
+        lines.map((l) => ({ name: l.product.name, quantity: l.quantity, price: l.product.price })),
+        order.order_number,
+      );
+      window.open(buildWhatsAppUrl(settings.whatsapp, message), "_blank", "noopener");
+      toast.success(`Pedido #${order.order_number} registrado`, { description: "Queda pendiente hasta que el negocio lo confirme." });
+      clear();
+      setName("");
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <CatalogLayout>
       <h1 className="text-3xl font-bold">Tu carrito</h1>
@@ -53,7 +102,12 @@ function Carrito() {
           </ul>
           <aside className="h-fit space-y-4 rounded-2xl border bg-card p-5 shadow-soft">
             <div className="flex justify-between text-lg"><span>Total estimado</span><span className="font-display font-bold">{formatPrice(total)}</span></div>
-            <WhatsAppButton lines={lines.map((l) => ({ name: l.product.name, quantity: l.quantity, price: l.product.price }))} />
+            <FormField label="Tu nombre" htmlFor="customer-name" hint="Así identificamos tu pedido">
+              <Input id="customer-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre y apellido" maxLength={120} />
+            </FormField>
+            <Button size="lg" className="w-full bg-whatsapp text-whatsapp-foreground hover:bg-whatsapp/90" disabled={busy} onClick={send}>
+              <MessageCircle /> {busy ? "Enviando…" : "Pedir por WhatsApp"}
+            </Button>
             <p className="text-xs text-muted-foreground">Tu pedido queda pendiente hasta que el negocio confirme disponibilidad. No se realiza ningún cobro online.</p>
           </aside>
         </div>

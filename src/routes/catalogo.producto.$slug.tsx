@@ -4,19 +4,20 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { CatalogLayout } from "@/components/catalog/CatalogLayout";
 import { AvailabilityBadge } from "@/components/shared/AvailabilityBadge";
-import { getPublicProduct } from "@/lib/domain/catalog";
 import { formatPrice } from "@/lib/format";
 import { useCart } from "@/lib/cart";
+import { publicProductsQuery } from "@/lib/data";
 
 export const Route = createFileRoute("/catalogo/producto/$slug")({
-  loader: ({ params }) => {
-    const product = getPublicProduct(params.slug);
+  loader: async ({ params, context }) => {
+    const products = await context.queryClient.ensureQueryData(publicProductsQuery);
+    const product = products.find((p) => p.slug === params.slug);
     if (!product) throw notFound();
     return { product };
   },
   head: ({ loaderData }) => {
-    const title = loaderData ? `${loaderData.product.name} — Catálogo` : "Producto no disponible";
-    const desc = loaderData?.product.description ?? "Producto no disponible.";
+    const title = loaderData ? `${loaderData.product.name} — Festiva` : "Producto no disponible";
+    const desc = loaderData?.product.description || "Producto no disponible.";
     return {
       meta: [
         { title },
@@ -30,6 +31,11 @@ export const Route = createFileRoute("/catalogo/producto/$slug")({
   notFoundComponent: () => (
     <CatalogLayout>
       <p className="text-center text-muted-foreground">Este producto no está disponible. <Link to="/catalogo/productos" className="text-primary">Ver productos</Link></p>
+    </CatalogLayout>
+  ),
+  errorComponent: ({ error }) => (
+    <CatalogLayout>
+      <p role="alert" className="text-center text-muted-foreground">No pudimos cargar el producto. {error instanceof Error ? error.message : ""}</p>
     </CatalogLayout>
   ),
   component: Detalle,
