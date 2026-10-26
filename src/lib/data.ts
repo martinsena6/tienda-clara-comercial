@@ -125,9 +125,10 @@ export const movementsQuery = queryOptions({
       .order("created_at", { ascending: false })
       .limit(100);
     if (error) throw error;
-    return data;
+    return data.map((m) => ({ ...m, productName: (m.products as { name: string } | null)?.name ?? "Producto eliminado" }));
   },
 });
+export type AdminMovement = Awaited<ReturnType<typeof movementsQuery.queryFn & {}>>[number];
 
 export const myRoleQuery = queryOptions({
   queryKey: ["my-role"],
@@ -139,6 +140,100 @@ export const myRoleQuery = queryOptions({
     return { email: u.user.email ?? "", role: roles.includes("admin") ? ("admin" as const) : roles.includes("vendedor") ? ("vendedor" as const) : null };
   },
 });
+
+// ---------- Mutaciones del panel ----------
+
+export interface ProductInput {
+  name: string;
+  category_id: string;
+  price: number;
+  cost: number;
+  min_stock: number;
+  description: string;
+  image_url?: string;
+}
+
+export async function createProduct(input: ProductInput & { slug: string; image_url: string }) {
+  const { error } = await supabase.from("products").insert({
+    slug: input.slug,
+    name: input.name,
+    category_id: input.category_id,
+    price: input.price,
+    cost: input.cost,
+    min_stock: input.min_stock,
+    description: input.description,
+    image_url: input.image_url,
+  });
+  if (error) throw error;
+}
+
+export async function updateProduct(id: string, input: ProductInput & { image_url: string }) {
+  const { error } = await supabase
+    .from("products")
+    .update({
+      name: input.name,
+      category_id: input.category_id,
+      price: input.price,
+      cost: input.cost,
+      min_stock: input.min_stock,
+      description: input.description,
+      image_url: input.image_url,
+    })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteProduct(id: string) {
+  const { error } = await supabase.from("products").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export interface SettingsInput {
+  name: string;
+  whatsapp: string;
+  instagram: string;
+  tiktok: string;
+  address: string;
+  hours: string;
+  email: string;
+}
+
+export async function saveSettings(values: SettingsInput) {
+  const { error } = await supabase.from("business_settings").update({ ...values, updated_at: new Date().toISOString() }).eq("id", 1);
+  if (error) throw error;
+}
+
+export async function adjustStock(productId: string, type: "entrada" | "salida" | "ajuste", quantity: number, reason: string) {
+  const { error } = await supabase.rpc("adjust_stock", { p_product_id: productId, p_type: type, p_quantity: quantity, p_reason: reason });
+  if (error) throw error;
+}
+
+export async function confirmOrder(orderId: string) {
+  const { error } = await supabase.rpc("confirm_order", { p_order_id: orderId });
+  if (error) throw error;
+}
+
+export async function cancelOrder(orderId: string) {
+  const { error } = await supabase.rpc("cancel_order", { p_order_id: orderId });
+  if (error) throw error;
+}
+
+export interface NewOrderResult {
+  order_number: number;
+  total: number;
+}
+
+/** Registra el pedido en la base (queda PENDIENTE). Los precios se leen en el servidor. */
+export async function createOrder(lines: { slug: string; quantity: number }[], customerName: string): Promise<NewOrderResult> {
+  const { data, error } = await supabase.rpc("create_order", {
+    p_items: lines.map((l) => ({ slug: l.slug, quantity: l.quantity })),
+    p_customer_name: customerName,
+  });
+  if (error) throw error;
+  const row = data?.[0];
+  if (!row) throw new Error("No se pudo registrar el pedido");
+  return { order_number: row.order_number, total: Number(row.total) };
+}
 
 /** Sube una foto al almacenamiento y devuelve una dirección duradera para mostrarla. */
 export async function uploadProductImage(file: File): Promise<string> {
