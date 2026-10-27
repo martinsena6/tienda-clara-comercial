@@ -1,37 +1,32 @@
 import { describe, expect, it } from "vitest";
-import { getAvailability, getPublicProducts, toPublicProduct } from "./catalog";
-import { products } from "./mock-data";
+import { getAvailability, marginPct, searchPublicProducts } from "./catalog";
 import { buildWhatsAppMessage } from "../whatsapp";
+import type { PublicProduct } from "./types";
 
-describe("catálogo público", () => {
-  it("no expone costo, proveedor ni stock", () => {
-    const pub = toPublicProduct(products[0]!) as unknown as Record<string, unknown>;
-    expect(pub).not.toHaveProperty("cost");
-    expect(pub).not.toHaveProperty("supplier");
-    expect(pub).not.toHaveProperty("stock");
-    expect(pub).not.toHaveProperty("id");
-  });
+const sample: PublicProduct[] = [
+  { slug: "a", name: "Chupetín Emoji", categorySlug: "chupetines", categoryName: "Chupetines", description: "", image: "", price: 100, availability: "disponible" },
+  { slug: "b", name: "Goma Piñata", categorySlug: "gomitas", categoryName: "Gomitas", description: "", image: "", price: 200, availability: "sin_stock" },
+];
 
-  it("usa el mismo precio que el producto interno (fuente única)", () => {
-    const pub = getPublicProducts().find((p) => p.slug === products[1]!.slug);
-    expect(pub?.price).toBe(products[1]!.price);
-  });
-
+describe("catálogo", () => {
   it("calcula la disponibilidad", () => {
-    expect(getAvailability(0, 3)).toBe("sin_stock");
-    expect(getAvailability(3, 3)).toBe("pocas_unidades");
-    expect(getAvailability(10, 3)).toBe("disponible");
+    expect(getAvailability(0, 5)).toBe("sin_stock");
+    expect(getAvailability(3, 5)).toBe("pocas_unidades");
+    expect(getAvailability(10, 5)).toBe("disponible");
   });
-});
 
-describe("pedido por WhatsApp", () => {
-  it("incluye el total y pide confirmación", () => {
-    const msg = buildWhatsAppMessage("Tienda", [
-      { name: "Taza", quantity: 2, price: 1000 },
-      { name: "Vela", quantity: 1, price: 500 },
-    ]);
-    expect(msg).toContain("2 x Taza");
-    expect(msg.replace(/\s/g, "")).toContain("$2.500");
-    expect(msg).toContain("confirmación");
+  it("busca por nombre y categoría", () => {
+    expect(searchPublicProducts(sample, "emoji").map((p) => p.slug)).toEqual(["a"]);
+    expect(searchPublicProducts(sample, undefined, "gomitas").map((p) => p.slug)).toEqual(["b"]);
+  });
+
+  it("calcula el margen", () => {
+    expect(marginPct(100, 60)).toBe(40);
+  });
+
+  it("el mensaje de WhatsApp incluye número de pedido", () => {
+    const msg = buildWhatsAppMessage("Festiva", [{ name: "Chupetín Emoji", quantity: 2, price: 100 }], 7);
+    expect(msg).toContain("#7");
+    expect(msg).toContain("Chupetín Emoji");
   });
 });

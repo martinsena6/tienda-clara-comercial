@@ -12,7 +12,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { businessSettings } from "@/lib/domain/mock-data";
+import { useQuery } from "@tanstack/react-query";
+import { DEFAULT_SETTINGS, settingsQuery } from "@/lib/data";
 
 const groups = [
   { label: "General", items: [{ title: "Inicio", url: "/admin", icon: LayoutDashboard }] },
@@ -36,6 +37,7 @@ const groups = [
 ] as const;
 
 export function AdminSidebar() {
+  const name = useQuery(settingsQuery).data?.name ?? DEFAULT_SETTINGS.name;
   const path = useRouterState({ select: (s) => s.location.pathname });
   const isActive = (url: string) => (url === "/admin" ? path === "/admin" || path === "/admin/" : path.startsWith(url));
 
@@ -44,10 +46,10 @@ export function AdminSidebar() {
       <SidebarHeader>
         <div className="flex items-center gap-2 px-1 py-1.5">
           <div className="grid size-8 shrink-0 place-items-center rounded-lg bg-sidebar-primary font-display text-sm font-bold text-sidebar-primary-foreground">
-            {businessSettings.name.charAt(0)}
+            {name.charAt(0)}
           </div>
           <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-            <div className="truncate font-display text-sm font-semibold">{businessSettings.name}</div>
+            <div className="truncate font-display text-sm font-semibold">{name}</div>
             <div className="text-xs opacity-70">Panel administrativo</div>
           </div>
         </div>
