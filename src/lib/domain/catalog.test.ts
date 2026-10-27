@@ -25,7 +25,7 @@ describe("catálogo", () => {
   });
 
   it("el mensaje de WhatsApp incluye número de pedido", () => {
-    const msg = buildWhatsAppMessage("Festiva", [{ name: "Chupetín Emoji", quantity: 2, unitPrice: 100 }], 7);
+    const msg = buildWhatsAppMessage("Festiva", [{ name: "Chupetín Emoji", quantity: 2, price: 100 }], 7);
     expect(msg).toContain("#7");
     expect(msg).toContain("Chupetín Emoji");
   });
