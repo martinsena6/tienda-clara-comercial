@@ -87,6 +87,14 @@ export function CatalogLayout({ children }: { children: ReactNode }) {
       <footer className="border-t">
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-6 text-sm text-muted-foreground sm:flex-row sm:justify-between">
           <span>{settings.name} · {settings.address}</span>
+          <span className="flex flex-wrap gap-3">
+            {settings.instagram && (
+              <a href={`https://instagram.com/${settings.instagram.replace(/^@/, "").trim()}`} target="_blank" rel="noreferrer" className="hover:text-foreground">Instagram</a>
+            )}
+            {settings.tiktok && (
+              <a href={`https://www.tiktok.com/@${settings.tiktok.replace(/^@\s*/, "").trim()}`} target="_blank" rel="noreferrer" className="hover:text-foreground">TikTok</a>
+            )}
+          </span>
           <span>{settings.hours}</span>
         </div>
       </footer>
