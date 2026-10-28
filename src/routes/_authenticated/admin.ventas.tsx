@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { cancelOrder, confirmOrder, errorMessage, ordersQuery, type AdminOrder } from "@/lib/data";
 import type { OrderStatus } from "@/lib/domain/types";
-import { formatDate, formatPrice, orderStatusLabel } from "@/lib/format";
+import { formatDateTime, formatPrice, orderStatusLabel } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/admin/ventas")({
   head: () => ({
@@ -45,7 +45,7 @@ function OrdersTable({ rows, actions }: { rows: AdminOrder[]; actions?: boolean 
       columns={[
         { header: "Pedido", cell: (o) => <div><div className="font-medium">{o.customer_name || "Cliente"}</div><div className="text-xs text-muted-foreground">#{o.number} · {o.channel === "whatsapp" ? "WhatsApp" : "Local"}</div></div> },
         { header: "Detalle", cell: (o) => o.items.map((i) => `${i.quantity} x ${i.name}`).join(", "), hideOnMobile: true },
-        { header: "Fecha", cell: (o) => formatDate(o.created_at), hideOnMobile: true },
+        { header: "Fecha", cell: (o) => formatDateTime(o.created_at), hideOnMobile: true },
         { header: "Total", cell: (o) => formatPrice(o.total), className: "text-right whitespace-nowrap" },
         { header: "Estado", cell: (o) => <StatusBadge tone={tone[o.status]}>{orderStatusLabel[o.status]}</StatusBadge> },
         ...(actions
