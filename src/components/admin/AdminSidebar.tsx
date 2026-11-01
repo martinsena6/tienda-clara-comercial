@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { BarChart3, Boxes, LayoutDashboard, Package, Settings, ShoppingBag, Store, Truck, Wallet } from "lucide-react";
+import { BarChart3, Boxes, LayoutDashboard, Package, Settings, ShoppingBag, Store, Tags, Truck, Users, Wallet } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -13,31 +13,46 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { useQuery } from "@tanstack/react-query";
-import { DEFAULT_SETTINGS, settingsQuery } from "@/lib/data";
+import { DEFAULT_SETTINGS, settingsQuery, useMyRole } from "@/lib/data";
 
-const groups = [
+interface Item {
+  title: string;
+  url: string;
+  icon: typeof LayoutDashboard;
+  adminOnly?: boolean;
+}
+
+const groups: { label: string; items: Item[] }[] = [
   { label: "General", items: [{ title: "Inicio", url: "/admin", icon: LayoutDashboard }] },
   {
     label: "Inventario",
     items: [
       { title: "Productos", url: "/admin/productos", icon: Package },
       { title: "Stock", url: "/admin/stock", icon: Boxes },
+      { title: "Costos", url: "/admin/costos", icon: Tags, adminOnly: true },
     ],
   },
   {
     label: "Operaciones",
     items: [
       { title: "Ventas", url: "/admin/ventas", icon: ShoppingBag },
-      { title: "Compras", url: "/admin/compras", icon: Truck },
-      { title: "Gastos", url: "/admin/gastos", icon: Wallet },
-      { title: "Rentabilidad", url: "/admin/rentabilidad", icon: BarChart3 },
+      { title: "Compras", url: "/admin/compras", icon: Truck, adminOnly: true },
+      { title: "Gastos", url: "/admin/gastos", icon: Wallet, adminOnly: true },
+      { title: "Rentabilidad", url: "/admin/rentabilidad", icon: BarChart3, adminOnly: true },
     ],
   },
-  { label: "Negocio", items: [{ title: "Configuración", url: "/admin/configuracion", icon: Settings }] },
-] as const;
+  {
+    label: "Negocio",
+    items: [
+      { title: "Usuarios", url: "/admin/usuarios", icon: Users, adminOnly: true },
+      { title: "Configuración", url: "/admin/configuracion", icon: Settings, adminOnly: true },
+    ],
+  },
+];
 
 export function AdminSidebar() {
   const name = useQuery(settingsQuery).data?.name ?? DEFAULT_SETTINGS.name;
+  const { isAdmin } = useMyRole();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const isActive = (url: string) => (url === "/admin" ? path === "/admin" || path === "/admin/" : path.startsWith(url));
 
@@ -55,25 +70,29 @@ export function AdminSidebar() {
         </div>
       </SidebarHeader>
       <SidebarContent>
-        {groups.map((g) => (
-          <SidebarGroup key={g.label}>
-            <SidebarGroupLabel>{g.label}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {g.items.map((item) => (
-                  <SidebarMenuItem key={item.url}>
-                    <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
-                      <Link to={item.url}>
-                        <item.icon />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+        {groups.map((g) => {
+          const items = g.items.filter((i) => !i.adminOnly || isAdmin);
+          if (items.length === 0) return null;
+          return (
+            <SidebarGroup key={g.label}>
+              <SidebarGroupLabel>{g.label}</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {items.map((item) => (
+                    <SidebarMenuItem key={item.url}>
+                      <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
+                        <Link to={item.url}>
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          );
+        })}
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
@@ -90,4 +109,3 @@ export function AdminSidebar() {
     </Sidebar>
   );
 }
-
