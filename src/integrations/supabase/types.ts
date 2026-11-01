@@ -14,6 +14,87 @@ export type Database = {
   }
   public: {
     Tables: {
+      _backup_movements_20261028: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          product_id: string | null
+          quantity: number | null
+          reason: string | null
+          type: Database["public"]["Enums"]["stock_movement_type"] | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          product_id?: string | null
+          quantity?: number | null
+          reason?: string | null
+          type?: Database["public"]["Enums"]["stock_movement_type"] | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          product_id?: string | null
+          quantity?: number | null
+          reason?: string | null
+          type?: Database["public"]["Enums"]["stock_movement_type"] | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      _backup_products_20261028: {
+        Row: {
+          active: boolean | null
+          category_id: string | null
+          cost: number | null
+          created_at: string | null
+          description: string | null
+          id: string | null
+          image_url: string | null
+          min_stock: number | null
+          name: string | null
+          price: number | null
+          slug: string | null
+          stock: number | null
+          supplier: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          category_id?: string | null
+          cost?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          image_url?: string | null
+          min_stock?: number | null
+          name?: string | null
+          price?: number | null
+          slug?: string | null
+          stock?: number | null
+          supplier?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          category_id?: string | null
+          cost?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          image_url?: string | null
+          min_stock?: number | null
+          name?: string | null
+          price?: number | null
+          slug?: string | null
+          stock?: number | null
+          supplier?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       business_settings: {
         Row: {
           address: string
@@ -75,6 +156,7 @@ export type Database = {
         Row: {
           channel: string
           confirmed_at: string | null
+          cost_total: number
           created_at: string
           customer_name: string
           customer_phone: string
@@ -87,6 +169,7 @@ export type Database = {
         Insert: {
           channel?: string
           confirmed_at?: string | null
+          cost_total?: number
           created_at?: string
           customer_name?: string
           customer_phone?: string
@@ -99,6 +182,7 @@ export type Database = {
         Update: {
           channel?: string
           confirmed_at?: string | null
+          cost_total?: number
           created_at?: string
           customer_name?: string
           customer_phone?: string
@@ -109,6 +193,47 @@ export type Database = {
           total?: number
         }
         Relationships: []
+      }
+      price_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          id: string
+          new_cost: number | null
+          new_price: number | null
+          old_cost: number | null
+          old_price: number | null
+          product_id: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          new_cost?: number | null
+          new_price?: number | null
+          old_cost?: number | null
+          old_price?: number | null
+          product_id: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          new_cost?: number | null
+          new_price?: number | null
+          old_cost?: number | null
+          old_price?: number | null
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_history_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       products: {
         Row: {
@@ -240,7 +365,10 @@ export type Database = {
         Returns: undefined
       }
       cancel_order: { Args: { p_order_id: string }; Returns: undefined }
-      confirm_order: { Args: { p_order_id: string }; Returns: undefined }
+      confirm_order: {
+        Args: { p_allow_negative?: boolean; p_order_id: string }
+        Returns: undefined
+      }
       create_order: {
         Args: { p_customer_name?: string; p_items: Json }
         Returns: {
