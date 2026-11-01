@@ -1,5 +1,5 @@
 // Acceso a los datos guardados (fuente única de productos, precios y configuración).
-import { queryOptions } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Availability, PublicProduct } from "./domain/types";
 import combo_misky_10 from "@/assets/combo-misky-10.jpg.asset.json";
@@ -89,6 +89,24 @@ export const DEFAULT_SETTINGS = {
 
 // ---------- Panel (requiere sesión; la base controla los permisos) ----------
 
+export const myRoleQuery = queryOptions({
+  queryKey: ["my-role"],
+  queryFn: async () => {
+    const { data: u } = await supabase.auth.getUser();
+    if (!u.user) return { email: "", role: null as null | "admin" | "vendedor" };
+    const { data } = await supabase.from("user_roles").select("role").eq("user_id", u.user.id);
+    const roles = (data ?? []).map((r) => r.role);
+    return { email: u.user.email ?? "", role: roles.includes("admin") ? ("admin" as const) : roles.includes("vendedor") ? ("vendedor" as const) : null };
+  },
+});
+
+/** Rol del usuario actual. undefined = todavía cargando. */
+export function useMyRole() {
+  const me = useQuery(myRoleQuery);
+  return { role: me.data?.role, email: me.data?.email ?? "", isAdmin: me.data?.role === "admin", isStaff: me.data?.role != null, loading: me.isLoading };
+}
+
+// Productos: el admin lee la tabla completa (con costos); el vendedor lee la vista sin costos.
 export const adminProductsQuery = queryOptions({
   queryKey: ["admin-products"],
   queryFn: async () => {
@@ -102,6 +120,40 @@ export const adminProductsQuery = queryOptions({
 });
 export type AdminProduct = Awaited<ReturnType<typeof adminProductsQuery.queryFn & {}>>[number];
 
+export const staffProductsQuery = queryOptions({
+  queryKey: ["staff-products"],
+  queryFn: async () => {
+    const { data, error } = await supabase
+      .from("products_staff")
+      .select("*, categories(name)")
+      .order("name");
+    if (error) throw error;
+    return (data ?? []).map((p) => ({
+      id: p.id ?? "",
+      slug: p.slug ?? "",
+      name: p.name ?? "",
+      category_id: p.category_id,
+      description: p.description ?? "",
+      image_url: p.image_url ?? "",
+      image: resolveImage(p.image_url ?? ""),
+      price: Number(p.price ?? 0),
+      stock: p.stock ?? 0,
+      min_stock: p.min_stock ?? 0,
+      active: p.active ?? false,
+      categories: p.categories as { name: string } | null,
+    }));
+  },
+});
+export type StaffProduct = Awaited<ReturnType<typeof staffProductsQuery.queryFn & {}>>[number];
+
+export interface OrderItemRow {
+  name: string;
+  quantity: number;
+  unit_price: number;
+  unit_cost?: number;
+}
+
+// Pedidos: el admin lee la tabla (con costos congelados); el vendedor lee la vista sin costos.
 export const ordersQuery = queryOptions({
   queryKey: ["orders"],
   queryFn: async () => {
@@ -110,11 +162,32 @@ export const ordersQuery = queryOptions({
     return data.map((o) => ({
       ...o,
       total: Number(o.total),
-      items: (o.items as { name: string; quantity: number; unit_price: number }[]) ?? [],
+      items: (o.items as OrderItemRow[]) ?? [],
     }));
   },
 });
 export type AdminOrder = Awaited<ReturnType<typeof ordersQuery.queryFn & {}>>[number];
+
+export const staffOrdersQuery = queryOptions({
+  queryKey: ["staff-orders"],
+  queryFn: async () => {
+    const { data, error } = await supabase.from("orders_staff").select("*").order("created_at", { ascending: false }).limit(300);
+    if (error) throw error;
+    return (data ?? []).map((o) => ({
+      id: o.id ?? "",
+      number: o.number ?? 0,
+      customer_name: o.customer_name ?? "",
+      customer_phone: o.customer_phone ?? "",
+      items: (o.items as OrderItemRow[] | null) ?? [],
+      total: Number(o.total ?? 0),
+      status: o.status ?? "pendiente",
+      channel: o.channel ?? "whatsapp",
+      created_at: o.created_at ?? "",
+      confirmed_at: o.confirmed_at,
+    }));
+  },
+});
+export type StaffOrder = Awaited<ReturnType<typeof staffOrdersQuery.queryFn & {}>>[number];
 
 export const movementsQuery = queryOptions({
   queryKey: ["movements"],
@@ -130,16 +203,162 @@ export const movementsQuery = queryOptions({
 });
 export type AdminMovement = Awaited<ReturnType<typeof movementsQuery.queryFn & {}>>[number];
 
-export const myRoleQuery = queryOptions({
-  queryKey: ["my-role"],
+// ---------- Equipo (solo admin) ----------
+
+export const teamQuery = queryOptions({
+  queryKey: ["team"],
   queryFn: async () => {
-    const { data: u } = await supabase.auth.getUser();
-    if (!u.user) return { email: "", role: null as null | "admin" | "vendedor" };
-    const { data } = await supabase.from("user_roles").select("role").eq("user_id", u.user.id);
-    const roles = (data ?? []).map((r) => r.role);
-    return { email: u.user.email ?? "", role: roles.includes("admin") ? ("admin" as const) : roles.includes("vendedor") ? ("vendedor" as const) : null };
+    const { data, error } = await supabase.rpc("list_team");
+    if (error) throw error;
+    return data ?? [];
   },
 });
+
+export async function setUserRole(userId: string, role: "admin" | "vendedor" | "ninguno") {
+  const { error } = await supabase.rpc("set_user_role", { p_user_id: userId, p_role: role });
+  if (error) throw error;
+}
+
+// ---------- Proveedores, compras y gastos (solo admin) ----------
+
+export const suppliersQuery = queryOptions({
+  queryKey: ["suppliers"],
+  queryFn: async () => {
+    const { data, error } = await supabase.from("suppliers").select("*").order("name");
+    if (error) throw error;
+    return data ?? [];
+  },
+});
+
+export async function saveSupplier(input: { id?: string; name: string; phone: string; notes: string }) {
+  const q = input.id
+    ? supabase.from("suppliers").update({ name: input.name, phone: input.phone, notes: input.notes }).eq("id", input.id)
+    : supabase.from("suppliers").insert({ name: input.name, phone: input.phone, notes: input.notes });
+  const { error } = await q;
+  if (error) throw error;
+}
+
+export async function deleteSupplier(id: string) {
+  const { error } = await supabase.from("suppliers").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export const EXPENSE_CATEGORIES = ["Alquiler", "Servicios", "Bolsas y packaging", "Flete", "Sueldos", "Impuestos", "Otros"] as const;
+
+/** Gastos de un mes (aaaa-mm). */
+export const expensesQuery = (month: string) =>
+  queryOptions({
+    queryKey: ["expenses", month],
+    queryFn: async () => {
+      const [y, m] = month.split("-").map(Number);
+      const next = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, "0")}-01`;
+      const { data, error } = await supabase
+        .from("expenses")
+        .select("*")
+        .gte("date", `${month}-01`)
+        .lt("date", next)
+        .order("date", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map((e) => ({ ...e, amount: Number(e.amount) }));
+    },
+  });
+export type ExpenseRow = Awaited<ReturnType<ReturnType<typeof expensesQuery>["queryFn"] & {}>>[number];
+
+export async function saveExpense(input: { id?: string; date: string; category: string; description: string; amount: number }) {
+  const q = input.id
+    ? supabase.from("expenses").update({ date: input.date, category: input.category, description: input.description, amount: input.amount }).eq("id", input.id)
+    : supabase.from("expenses").insert({ date: input.date, category: input.category, description: input.description, amount: input.amount });
+  const { error } = await q;
+  if (error) throw error;
+}
+
+export async function deleteExpense(id: string) {
+  const { error } = await supabase.from("expenses").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export const purchasesQuery = queryOptions({
+  queryKey: ["purchases"],
+  queryFn: async () => {
+    const { data, error } = await supabase
+      .from("purchases")
+      .select("*, suppliers(name)")
+      .order("date", { ascending: false })
+      .limit(200);
+    if (error) throw error;
+    return (data ?? []).map((p) => ({ ...p, total: Number(p.total), supplierName: (p.suppliers as { name: string } | null)?.name ?? "Sin proveedor" }));
+  },
+});
+export type PurchaseRow = Awaited<ReturnType<typeof purchasesQuery.queryFn & {}>>[number];
+
+export const purchaseItemsQuery = (purchaseId: string) =>
+  queryOptions({
+    queryKey: ["purchase-items", purchaseId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("purchase_items")
+        .select("*, products(name)")
+        .eq("purchase_id", purchaseId);
+      if (error) throw error;
+      return (data ?? []).map((i) => ({ ...i, unit_cost: Number(i.unit_cost), productName: (i.products as { name: string } | null)?.name ?? "Producto" }));
+    },
+  });
+
+export async function registerPurchase(input: {
+  date: string;
+  supplier_id: string | null;
+  notes: string;
+  items: { product_id: string; quantity: number; unit_cost: number }[];
+  update_cost: boolean;
+}) {
+  const { data, error } = await supabase.rpc("register_purchase", {
+    p_date: input.date,
+    p_supplier_id: input.supplier_id,
+    p_notes: input.notes,
+    p_items: input.items,
+    p_update_cost: input.update_cost,
+  });
+  if (error) throw error;
+  return data?.[0];
+}
+
+// ---------- Costos ----------
+
+export async function applyCosts(rows: { product_id: string; cost: number | null; supplier: string | null }[]) {
+  const { data, error } = await supabase.rpc("apply_costs", { p_rows: rows });
+  if (error) throw error;
+  return data ?? 0;
+}
+
+// ---------- Reporte del negocio (solo admin) ----------
+
+export interface BusinessReport {
+  ventas: number;
+  pedidos: number;
+  ticket_promedio: number;
+  costo_mercaderia: number;
+  pedidos_sin_costo: number;
+  gastos: number;
+  gastos_por_categoria: { category: string; total: number }[];
+  pendientes: number;
+  top_unidades: { name: string; unidades: number; ventas: number; ganancia: number }[];
+  top_ganancia: { name: string; unidades: number; ventas: number; ganancia: number }[];
+  por_dia: { dia: string; pedidos: number; ventas: number }[];
+  inventario_costo: number;
+  inventario_precio: number;
+  productos_sin_costo: number;
+  sin_movimiento_60d: number;
+}
+
+export const businessReportQuery = (from: string, to: string) =>
+  queryOptions({
+    queryKey: ["business-report", from, to],
+    queryFn: async (): Promise<BusinessReport> => {
+      const { data, error } = await supabase.rpc("business_report", { p_from: from, p_to: to });
+      if (error) throw error;
+      return data as unknown as BusinessReport;
+    },
+  });
 
 // ---------- Mutaciones del panel ----------
 
@@ -183,8 +402,15 @@ export async function updateProduct(id: string, input: ProductInput & { image_ur
   if (error) throw error;
 }
 
-export async function deleteProduct(id: string) {
-  const { error } = await supabase.from("products").delete().eq("id", id);
+/** Los productos no se borran: se ocultan de la tienda. */
+export async function setProductActive(id: string, active: boolean) {
+  const { error } = await supabase.from("products").update({ active }).eq("id", id);
+  if (error) throw error;
+}
+
+/** Edición en línea de costo y proveedor (solo admin). */
+export async function updateProductInternals(id: string, input: { cost?: number; supplier?: string }) {
+  const { error } = await supabase.from("products").update(input).eq("id", id);
   if (error) throw error;
 }
 
@@ -208,8 +434,9 @@ export async function adjustStock(productId: string, type: "entrada" | "salida" 
   if (error) throw error;
 }
 
-export async function confirmOrder(orderId: string) {
-  const { error } = await supabase.rpc("confirm_order", { p_order_id: orderId });
+/** Confirma el pedido. Con allowNegative=false la base rechaza si falta stock. */
+export async function confirmOrder(orderId: string, allowNegative = false) {
+  const { error } = await supabase.rpc("confirm_order", { p_order_id: orderId, p_allow_negative: allowNegative });
   if (error) throw error;
 }
 
