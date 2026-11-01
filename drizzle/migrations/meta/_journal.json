@@ -15,6 +15,13 @@
       "when": 1792822297162,
       "tag": "0001_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793533485564,
+      "tag": "0002_seguridad_equipo_costos_y_dinero",
+      "breakpoints": true
     }
   ]
 }
