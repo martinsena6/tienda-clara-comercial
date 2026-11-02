@@ -10,7 +10,7 @@ import { PageHeader } from "@/components/admin/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { AvailabilityBadge } from "@/components/shared/AvailabilityBadge";
 import { getAvailability } from "@/lib/domain/catalog";
-import { adjustStock, adminProductsQuery, errorMessage, movementsQuery } from "@/lib/data";
+import { adjustStock, errorMessage, usePanelProducts, movementsQuery } from "@/lib/data";
 import { formatDate, movementLabel } from "@/lib/format";
 import { stockMovementSchema } from "@/lib/validation";
 
@@ -30,7 +30,7 @@ const tone = { entrada: "success", salida: "info", ajuste: "warning" } as const;
 
 function Stock() {
   const qc = useQueryClient();
-  const products = useQuery(adminProductsQuery).data ?? [];
+  const products = usePanelProducts().data;
   const movements = useQuery(movementsQuery).data ?? [];
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);

@@ -1,11 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, Clock, DollarSign, Package } from "lucide-react";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { StatCard } from "@/components/admin/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { getAvailability } from "@/lib/domain/catalog";
-import { adminProductsQuery, ordersQuery } from "@/lib/data";
+import { usePanelOrders, usePanelProducts } from "@/lib/data";
+import { ReportPanel } from "@/components/admin/ReportPanel";
 import { formatDate, formatPrice } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
@@ -21,16 +21,17 @@ export const Route = createFileRoute("/_authenticated/admin/")({
 });
 
 function Dashboard() {
-  const orders = useQuery(ordersQuery).data ?? [];
-  const products = useQuery(adminProductsQuery).data ?? [];
+  const orders = usePanelOrders().data;
+  const { data: products, isAdmin } = usePanelProducts();
   const confirmed = orders.filter((o) => o.status === "confirmado");
   const pending = orders.filter((o) => o.status === "pendiente");
   const low = products.filter((p) => p.active && getAvailability(p.stock, p.min_stock) !== "disponible");
   return (
     <>
       <PageHeader title="Hola 👋" description="Así viene tu negocio." />
+      {isAdmin ? <div className="mb-6"><ReportPanel compact /></div> : null}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Ventas confirmadas" value={formatPrice(confirmed.reduce((s, o) => s + o.total, 0))} hint={`${confirmed.length} ventas`} icon={DollarSign} />
+        {!isAdmin && <StatCard label="Ventas confirmadas" value={formatPrice(confirmed.reduce((s, o) => s + o.total, 0))} hint={`${confirmed.length} ventas`} icon={DollarSign} />}
         <StatCard label="Pedidos pendientes" value={String(pending.length)} hint="Esperan tu confirmación" icon={Clock} />
         <StatCard label="Productos activos" value={String(products.filter((p) => p.active).length)} icon={Package} />
         <StatCard label="Stock bajo o agotado" value={String(low.length)} hint="Revisá reposición" icon={AlertTriangle} />
