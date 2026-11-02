@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormField } from "@/components/admin/FormField";
+import { RequireAdmin } from "@/components/admin/RequireAdmin";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { errorMessage, saveSettings, settingsQuery } from "@/lib/data";
 import { settingsSchema } from "@/lib/validation";
@@ -18,7 +19,7 @@ export const Route = createFileRoute("/_authenticated/admin/configuracion")({
       { property: "og:description", content: "Datos del negocio y contacto." },
     ],
   }),
-  component: Configuracion,
+  component: () => <RequireAdmin><Configuracion /></RequireAdmin>,
 });
 
 function Configuracion() {
