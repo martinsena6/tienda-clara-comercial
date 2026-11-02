@@ -178,7 +178,7 @@ export const staffOrdersQuery = queryOptions({
       number: o.number ?? 0,
       customer_name: o.customer_name ?? "",
       customer_phone: o.customer_phone ?? "",
-      items: (o.items as OrderItemRow[] | null) ?? [],
+      items: ((o.items as unknown as OrderItemRow[] | null) ?? []),
       total: Number(o.total ?? 0),
       status: o.status ?? "pendiente",
       channel: o.channel ?? "whatsapp",
@@ -250,7 +250,7 @@ export const expensesQuery = (month: string) =>
   queryOptions({
     queryKey: ["expenses", month],
     queryFn: async () => {
-      const [y, m] = month.split("-").map(Number);
+      const [y = 2026, m = 1] = month.split("-").map(Number);
       const next = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, "0")}-01`;
       const { data, error } = await supabase
         .from("expenses")
@@ -313,7 +313,7 @@ export async function registerPurchase(input: {
 }) {
   const { data, error } = await supabase.rpc("register_purchase", {
     p_date: input.date,
-    p_supplier_id: input.supplier_id,
+    p_supplier_id: input.supplier_id as string,
     p_notes: input.notes,
     p_items: input.items,
     p_update_cost: input.update_cost,
