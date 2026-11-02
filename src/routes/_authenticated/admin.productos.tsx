@@ -54,7 +54,8 @@ function ProductForm({ product, onDone }: { product: AdminProduct | null; onDone
 
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const r = productSchema.safeParse(Object.fromEntries(new FormData(e.currentTarget)));
+    const fd = new FormData(e.currentTarget);
+    const r = productSchema.safeParse(Object.fromEntries(fd));
     if (!r.success) {
       setErrors(Object.fromEntries(r.error.issues.map((i) => [String(i.path[0]), i.message])));
       return;
@@ -63,7 +64,7 @@ function ProductForm({ product, onDone }: { product: AdminProduct | null; onDone
     setBusy(true);
     try {
       const input = { ...r.data, description: r.data.description ?? "", image_url: image };
-      const supplier = String(new FormData(e.currentTarget).get("supplier") ?? "").trim();
+      const supplier = String(fd.get("supplier") ?? "").trim();
       if (product) await updateProduct(product.id, input);
       else await createProduct({ ...input, slug: slugify(input.name) });
       if (product) await updateProductInternals(product.id, { supplier });
