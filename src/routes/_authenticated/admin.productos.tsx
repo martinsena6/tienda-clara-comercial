@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Trash2 } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { Pencil, Plus } from "lucide-react";
+import { useMemo, useState, type FormEvent } from "react";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +14,7 @@ import { PageHeader } from "@/components/admin/PageHeader";
 import { AvailabilityBadge } from "@/components/shared/AvailabilityBadge";
 import { getAvailability, marginPct } from "@/lib/domain/catalog";
 import {
-  adminProductsQuery, categoriesQuery, createProduct, deleteProduct, errorMessage, slugify, updateProduct, uploadProductImage,
+  categoriesQuery, createProduct, errorMessage, normalizeName, setProductActive, updateProductInternals, usePanelProducts, type PanelProduct, slugify, updateProduct, uploadProductImage,
   type AdminProduct,
 } from "@/lib/data";
 import { formatPrice } from "@/lib/format";
@@ -62,8 +63,10 @@ function ProductForm({ product, onDone }: { product: AdminProduct | null; onDone
     setBusy(true);
     try {
       const input = { ...r.data, description: r.data.description ?? "", image_url: image };
+      const supplier = String(new FormData(e.currentTarget).get("supplier") ?? "").trim();
       if (product) await updateProduct(product.id, input);
       else await createProduct({ ...input, slug: slugify(input.name) });
+      if (product) await updateProductInternals(product.id, { supplier });
       await qc.invalidateQueries();
       toast.success(product ? "Producto actualizado" : "Producto creado");
       onDone();
@@ -97,6 +100,7 @@ function ProductForm({ product, onDone }: { product: AdminProduct | null; onDone
         <FormField label="Precio de venta" htmlFor="price" error={errors["price"]}><Input id="price" name="price" type="number" min={0} step="any" defaultValue={product?.price} /></FormField>
         <FormField label="Costo" htmlFor="cost" hint="Interno, no se publica" error={errors["cost"]}><Input id="cost" name="cost" type="number" min={0} step="any" defaultValue={product?.cost ?? 0} /></FormField>
       </div>
+      <FormField label="Proveedor" htmlFor="supplier" hint="Interno, no se publica"><Input id="supplier" name="supplier" defaultValue={product?.supplier ?? ""} /></FormField>
       <FormField label="Stock mínimo" htmlFor="min_stock" hint="El stock se carga desde la sección Stock" error={errors["min_stock"]}><Input id="min_stock" name="min_stock" type="number" min={0} defaultValue={product?.min_stock ?? 0} /></FormField>
       <FormField label="Descripción" htmlFor="description"><Textarea id="description" name="description" rows={3} defaultValue={product?.description} /></FormField>
       <Button type="submit" className="w-full" disabled={busy}>{busy ? "Guardando…" : "Guardar producto"}</Button>
@@ -104,28 +108,58 @@ function ProductForm({ product, onDone }: { product: AdminProduct | null; onDone
   );
 }
 
+const PAGE = 25;
+
+function CostCell({ p }: { p: PanelProduct }) {
+  const qc = useQueryClient();
+  const [v, setV] = useState(p.cost && p.cost > 0 ? String(p.cost) : "");
+  const save = async () => {
+    const n = v.trim() === "" ? 0 : Number(v.replace(",", "."));
+    if (!Number.isFinite(n) || n < 0) return toast.error("Costo inválido");
+    if (n === (p.cost ?? 0)) return;
+    try { await updateProductInternals(p.id, { cost: n }); await qc.invalidateQueries({ queryKey: ["admin-products"] }); toast.success("Costo guardado"); }
+    catch (e) { toast.error(errorMessage(e)); }
+  };
+  return <Input aria-label={`Costo de ${p.name}`} className="h-8 w-24 text-right" inputMode="decimal" placeholder="Sin costo" value={v} onChange={(e) => setV(e.target.value)} onBlur={save} onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} />;
+}
+
 function Productos() {
   const qc = useQueryClient();
-  const { data: products = [], isLoading } = useQuery(adminProductsQuery);
+  const { data: products, isLoading, isAdmin } = usePanelProducts();
+  const categories = useQuery(categoriesQuery).data ?? [];
   const [editing, setEditing] = useState<AdminProduct | null | undefined>(undefined);
+  const [status, setStatus] = useState<"activos" | "ocultos" | "todos">("activos");
+  const [cat, setCat] = useState("");
+  const [q, setQ] = useState("");
+  const [page, setPage] = useState(0);
 
-  const remove = async (p: AdminProduct) => {
-    if (!confirm(`¿Borrar "${p.name}"?`)) return;
+  const filtered = useMemo(() => {
+    const nq = normalizeName(q);
+    return products.filter((p) =>
+      (status === "todos" || (status === "activos" ? p.active : !p.active)) &&
+      (!cat || p.category_id === cat) &&
+      (!nq || normalizeName(p.name).includes(nq)));
+  }, [products, status, cat, q]);
+  const pages = Math.max(1, Math.ceil(filtered.length / PAGE));
+  const rows = filtered.slice(page * PAGE, page * PAGE + PAGE);
+
+  const toggle = async (p: PanelProduct, active: boolean) => {
     try {
-      await deleteProduct(p.id);
+      await setProductActive(p.id, active);
       await qc.invalidateQueries();
-      toast.success("Producto borrado");
+      toast.success(active ? "Visible en la tienda" : "Oculto de la tienda");
     } catch (e) {
       toast.error(errorMessage(e));
     }
   };
 
+  const selectCls = "h-9 rounded-md border bg-card px-3 text-sm";
   return (
     <>
       <PageHeader
         title="Productos"
-        description="Lo que cambies acá se ve al instante en la tienda."
-        actions={<Button onClick={() => setEditing(null)}><Plus /> Nuevo producto</Button>}
+        description="Los productos no se borran: se ocultan de la tienda."
+        actions={isAdmin ? <Button onClick={() => setEditing(null)}><Plus /> Nuevo producto</Button> : undefined}
       />
       <Sheet open={editing !== undefined} onOpenChange={(o) => !o && setEditing(undefined)}>
         <SheetContent className="overflow-y-auto">
@@ -133,29 +167,47 @@ function Productos() {
           {editing !== undefined && <ProductForm key={editing?.id ?? "new"} product={editing} onDone={() => setEditing(undefined)} />}
         </SheetContent>
       </Sheet>
+      <div className="mb-4 flex flex-wrap gap-2">
+        <Input placeholder="Buscar producto…" value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} className="h-9 w-full sm:w-64" />
+        <select aria-label="Estado" className={selectCls} value={status} onChange={(e) => { setStatus(e.target.value as typeof status); setPage(0); }}>
+          <option value="activos">Activos</option><option value="ocultos">Ocultos</option><option value="todos">Todos</option>
+        </select>
+        <select aria-label="Categoría" className={selectCls} value={cat} onChange={(e) => { setCat(e.target.value); setPage(0); }}>
+          <option value="">Todas las categorías</option>
+          {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        <span className="self-center text-sm text-muted-foreground">{filtered.length} productos</span>
+      </div>
       {isLoading ? <p className="text-sm text-muted-foreground">Cargando…</p> : (
         <DataTable
-          rows={products}
+          rows={rows}
           getKey={(p) => p.id}
           columns={[
             { header: "Producto", cell: (p) => (
               <div className="flex items-center gap-3">
                 {p.image ? <img src={p.image} alt="" loading="lazy" className="size-10 rounded-md object-cover" /> : <div className="size-10 rounded-md bg-muted" />}
-                <div><div className="font-medium">{p.name}</div><div className="text-xs text-muted-foreground">{(p.categories as { name: string } | null)?.name ?? "Sin categoría"}</div></div>
+                <div><div className="font-medium">{p.name}</div><div className="text-xs text-muted-foreground">{p.categories?.name ?? "Sin categoría"}{isAdmin && p.supplier ? ` · ${p.supplier}` : ""}</div></div>
               </div>
             ) },
             { header: "Precio", cell: (p) => formatPrice(p.price), className: "text-right whitespace-nowrap" },
-            { header: "Costo", cell: (p) => formatPrice(p.cost), className: "text-right whitespace-nowrap", hideOnMobile: true },
-            { header: "Margen", cell: (p) => `${marginPct(p.price, p.cost)}%`, className: "text-right", hideOnMobile: true },
+            ...(isAdmin ? [
+              { header: "Costo", cell: (p: PanelProduct) => <CostCell key={`${p.id}-${p.cost}`} p={p} />, className: "text-right", hideOnMobile: true },
+              { header: "Margen", cell: (p: PanelProduct) => (p.cost ?? 0) > 0 ? `${marginPct(p.price, p.cost ?? 0)}%` : <span className="text-muted-foreground">—</span>, className: "text-right", hideOnMobile: true },
+            ] : []),
             { header: "Disponibilidad", cell: (p) => <AvailabilityBadge value={getAvailability(p.stock, p.min_stock)} />, hideOnMobile: true },
-            { header: "Acciones", cell: (p) => (
-              <div className="flex gap-1">
-                <Button size="sm" variant="ghost" aria-label="Editar" onClick={() => setEditing(p)}><Pencil /></Button>
-                <Button size="sm" variant="ghost" aria-label="Borrar" onClick={() => remove(p)}><Trash2 /></Button>
-              </div>
-            ) },
+            { header: "Visible en la tienda", cell: (p) => <Switch checked={p.active} disabled={!isAdmin} aria-label={`Visible en la tienda: ${p.name}`} onCheckedChange={(v) => toggle(p, v)} /> },
+            ...(isAdmin ? [{ header: "Editar", cell: (p: PanelProduct) => (
+              <Button size="sm" variant="ghost" aria-label="Editar" onClick={() => setEditing(p as AdminProduct)}><Pencil /></Button>
+            ) }] : []),
           ]}
         />
+      )}
+      {pages > 1 && (
+        <div className="mt-4 flex items-center justify-center gap-3 text-sm">
+          <Button size="sm" variant="outline" disabled={page === 0} onClick={() => setPage(page - 1)}>Anterior</Button>
+          <span>Página {page + 1} de {pages}</span>
+          <Button size="sm" variant="outline" disabled={page >= pages - 1} onClick={() => setPage(page + 1)}>Siguiente</Button>
+        </div>
       )}
     </>
   );
