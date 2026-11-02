@@ -162,7 +162,8 @@ export const ordersQuery = queryOptions({
     return data.map((o) => ({
       ...o,
       total: Number(o.total),
-      items: (o.items as OrderItemRow[]) ?? [],
+      items: ((o.items as unknown as OrderItemRow[] | null) ?? []),
+      cost_total: Number(o.cost_total ?? 0),
     }));
   },
 });
@@ -490,4 +491,67 @@ export function errorMessage(e: unknown): string {
   if (/duplicate key.*slug/i.test(m)) return "Ya existe un producto con ese nombre";
   if (/permission|Sin permiso|row-level/i.test(m)) return "No tenés permiso para hacer esto";
   return m;
+}
+
+// ---------- Lectura según rol ----------
+
+export interface PanelProduct {
+  id: string; slug: string; name: string; category_id: string | null; description: string;
+  image_url: string; image: string; price: number; stock: number; min_stock: number; active: boolean;
+  categories: { name: string } | null;
+  /** Solo para el admin (undefined para el vendedor). */
+  cost?: number; supplier?: string;
+}
+
+/** Productos: el admin lee la tabla; el vendedor la vista sin costos. */
+export function usePanelProducts() {
+  const { role, isAdmin } = useMyRole();
+  const a = useQuery({ ...adminProductsQuery, enabled: role === "admin" });
+  const s = useQuery({ ...staffProductsQuery, enabled: role === "vendedor" });
+  const data: PanelProduct[] = isAdmin
+    ? (a.data ?? []).map((p) => ({ ...p, categories: p.categories as { name: string } | null }))
+    : (s.data ?? []);
+  return { data, isLoading: role === undefined || (isAdmin ? a.isLoading : s.isLoading), isAdmin };
+}
+
+export interface PanelOrder {
+  id: string; number: number; customer_name: string; customer_phone: string; items: OrderItemRow[];
+  total: number; status: "pendiente" | "confirmado" | "cancelado"; channel: string; created_at: string;
+  confirmed_at: string | null;
+}
+
+export function usePanelOrders() {
+  const { role, isAdmin } = useMyRole();
+  const a = useQuery({ ...ordersQuery, enabled: role === "admin" });
+  const s = useQuery({ ...staffOrdersQuery, enabled: role === "vendedor" });
+  const data: PanelOrder[] = isAdmin ? (a.data ?? []) : (s.data ?? []);
+  return { data, isLoading: role === undefined || (isAdmin ? a.isLoading : s.isLoading), isAdmin };
+}
+
+/** Rango [desde, hasta) en hora de Argentina (UTC-3) para el reporte. */
+export function argentinaRange(fromDate: string, toDate: string) {
+  const [y, m, d] = toDate.split("-").map(Number);
+  const next = new Date(Date.UTC(y!, m! - 1, d! + 1)).toISOString().slice(0, 10);
+  return { from: `${fromDate}T00:00:00-03:00`, to: `${next}T00:00:00-03:00` };
+}
+
+/** Fecha de hoy (aaaa-mm-dd) en Argentina. */
+export function todayAR(offsetDays = 0): string {
+  const t = new Date(Date.now() - 3 * 3600_000 + offsetDays * 86400_000);
+  return t.toISOString().slice(0, 10);
+}
+
+/** Interpreta números en formato argentino (1.234,50) o con punto decimal; ignora $ y espacios. */
+export function parseArNumber(raw: unknown): number | null {
+  if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
+  let s = String(raw ?? "").replace(/[$\s]|ARS/gi, "").trim();
+  if (!s) return null;
+  if (s.includes(",")) s = s.replace(/\./g, "").replace(",", ".");
+  else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, "");
+  const n = Number(s);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+export function normalizeName(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
 }
