@@ -116,7 +116,7 @@ function CostCell({ p }: { p: PanelProduct }) {
   const [v, setV] = useState(p.cost && p.cost > 0 ? String(p.cost) : "");
   const save = async () => {
     const n = v.trim() === "" ? 0 : Number(v.replace(",", "."));
-    if (!Number.isFinite(n) || n < 0) return toast.error("Costo inválido");
+    if (!Number.isFinite(n) || n < 0) { toast.error("Costo inválido"); return; }
     if (n === (p.cost ?? 0)) return;
     try { await updateProductInternals(p.id, { cost: n }); await qc.invalidateQueries({ queryKey: ["admin-products"] }); toast.success("Costo guardado"); }
     catch (e) { toast.error(errorMessage(e)); }
