@@ -188,10 +188,17 @@ export type Database = {
           confirmed_at: string | null
           cost_total: number
           created_at: string
+          customer_email: string
           customer_name: string
           customer_phone: string
+          delivered_at: string | null
+          delivery_address: Json
+          delivery_method: string
+          edited_at: string | null
+          event_date: string | null
           id: string
           items: Json
+          notes: string
           number: number
           status: Database["public"]["Enums"]["order_status"]
           total: number
@@ -201,10 +208,17 @@ export type Database = {
           confirmed_at?: string | null
           cost_total?: number
           created_at?: string
+          customer_email?: string
           customer_name?: string
           customer_phone?: string
+          delivered_at?: string | null
+          delivery_address?: Json
+          delivery_method?: string
+          edited_at?: string | null
+          event_date?: string | null
           id?: string
           items?: Json
+          notes?: string
           number?: number
           status?: Database["public"]["Enums"]["order_status"]
           total?: number
@@ -214,10 +228,17 @@ export type Database = {
           confirmed_at?: string | null
           cost_total?: number
           created_at?: string
+          customer_email?: string
           customer_name?: string
           customer_phone?: string
+          delivered_at?: string | null
+          delivery_address?: Json
+          delivery_method?: string
+          edited_at?: string | null
+          event_date?: string | null
           id?: string
           items?: Json
+          notes?: string
           number?: number
           status?: Database["public"]["Enums"]["order_status"]
           total?: number
@@ -512,10 +533,17 @@ export type Database = {
           channel: string | null
           confirmed_at: string | null
           created_at: string | null
+          customer_email: string | null
           customer_name: string | null
           customer_phone: string | null
+          delivered_at: string | null
+          delivery_address: Json | null
+          delivery_method: string | null
+          edited_at: string | null
+          event_date: string | null
           id: string | null
           items: Json | null
+          notes: string | null
           number: number | null
           status: Database["public"]["Enums"]["order_status"] | null
           total: number | null
@@ -524,10 +552,17 @@ export type Database = {
           channel?: string | null
           confirmed_at?: string | null
           created_at?: string | null
+          customer_email?: string | null
           customer_name?: string | null
           customer_phone?: string | null
+          delivered_at?: string | null
+          delivery_address?: Json | null
+          delivery_method?: string | null
+          edited_at?: string | null
+          event_date?: string | null
           id?: string | null
           items?: never
+          notes?: string | null
           number?: number | null
           status?: Database["public"]["Enums"]["order_status"] | null
           total?: number | null
@@ -536,10 +571,17 @@ export type Database = {
           channel?: string | null
           confirmed_at?: string | null
           created_at?: string | null
+          customer_email?: string | null
           customer_name?: string | null
           customer_phone?: string | null
+          delivered_at?: string | null
+          delivery_address?: Json | null
+          delivery_method?: string | null
+          edited_at?: string | null
+          event_date?: string | null
           id?: string | null
           items?: never
+          notes?: string | null
           number?: number | null
           status?: Database["public"]["Enums"]["order_status"] | null
           total?: number | null
@@ -617,14 +659,32 @@ export type Database = {
         Args: { p_allow_negative?: boolean; p_order_id: string }
         Returns: undefined
       }
+      create_counter_sale: {
+        Args: { p_allow_negative?: boolean; p_items: Json; p_note?: string }
+        Returns: {
+          order_number: number
+          order_total: number
+        }[]
+      }
       create_order: {
-        Args: { p_customer_name?: string; p_items: Json }
+        Args: {
+          p_customer_email?: string
+          p_customer_name?: string
+          p_customer_phone?: string
+          p_delivery_address?: Json
+          p_delivery_method?: string
+          p_event_date?: string
+          p_hp?: string
+          p_items: Json
+          p_notes?: string
+        }
         Returns: {
           items: Json
           order_number: number
           total: number
         }[]
       }
+      expire_pending_orders: { Args: { p_hours?: number }; Returns: number }
       get_public_products: {
         Args: never
         Returns: {
@@ -655,6 +715,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      mark_order_delivered: { Args: { p_order_id: string }; Returns: undefined }
       register_purchase: {
         Args: {
           p_date: string
@@ -670,6 +731,14 @@ export type Database = {
       }
       set_user_role: {
         Args: { p_role: string; p_user_id: string }
+        Returns: undefined
+      }
+      update_order_items: {
+        Args: { p_items: Json; p_order_id: string }
+        Returns: number
+      }
+      void_confirmed_order: {
+        Args: { p_order_id: string; p_reason?: string }
         Returns: undefined
       }
     }
