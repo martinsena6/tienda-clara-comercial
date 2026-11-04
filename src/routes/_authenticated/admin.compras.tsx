@@ -50,8 +50,8 @@ function Compras() {
 
   const save = async () => {
     const items = lines.map((l) => ({ product_id: l.product_id, quantity: Math.trunc(Number(l.quantity)), unit_cost: parseArNumber(l.unit_cost) ?? NaN }));
-    if (items.length === 0) return toast.error("Agregá al menos un producto");
-    if (items.some((i) => !(i.quantity > 0) || !(i.unit_cost >= 0))) return toast.error("Revisá cantidades y costos");
+    if (items.length === 0) { toast.error("Agregá al menos un producto"); return; }
+    if (items.some((i) => !(i.quantity > 0) || !(i.unit_cost >= 0))) { toast.error("Revisá cantidades y costos"); return; }
     setBusy(true);
     try {
       const r = await registerPurchase({ date, supplier_id: supplierId || null, notes, items, update_cost: updateCost });
