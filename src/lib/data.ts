@@ -147,6 +147,7 @@ export const staffProductsQuery = queryOptions({
 export type StaffProduct = Awaited<ReturnType<typeof staffProductsQuery.queryFn & {}>>[number];
 
 export interface OrderItemRow {
+  product_id?: string;
   name: string;
   quantity: number;
   unit_price: number;
@@ -185,6 +186,13 @@ export const staffOrdersQuery = queryOptions({
       channel: o.channel ?? "whatsapp",
       created_at: o.created_at ?? "",
       confirmed_at: o.confirmed_at,
+      customer_email: o.customer_email ?? "",
+      delivery_method: o.delivery_method ?? "retiro",
+      delivery_address: o.delivery_address,
+      event_date: o.event_date,
+      notes: o.notes ?? "",
+      delivered_at: o.delivered_at,
+      edited_at: o.edited_at,
     }));
   },
 });
@@ -449,18 +457,56 @@ export async function cancelOrder(orderId: string) {
 export interface NewOrderResult {
   order_number: number;
   total: number;
+  items: { name: string; quantity: number; unit_price: number }[];
 }
 
-/** Registra el pedido en la base (queda PENDIENTE). Los precios se leen en el servidor. */
-export async function createOrder(lines: { slug: string; quantity: number }[], customerName: string): Promise<NewOrderResult> {
+export interface CustomerData {
+  name: string; phone: string; email: string; delivery: "retiro" | "envio";
+  street: string; city: string; province: string; postal_code: string; event_date: string; notes: string;
+}
+
+/** Registra el pedido en la base (queda PENDIENTE). Los precios se calculan en el servidor. */
+export async function createOrder(lines: { slug: string; quantity: number }[], c: CustomerData, hp: string): Promise<NewOrderResult> {
   const { data, error } = await supabase.rpc("create_order", {
     p_items: lines.map((l) => ({ slug: l.slug, quantity: l.quantity })),
-    p_customer_name: customerName,
+    p_customer_name: c.name,
+    p_customer_phone: c.phone,
+    p_delivery_method: c.delivery,
+    p_delivery_address: c.delivery === "envio" ? { street: c.street, city: c.city, province: c.province, postal_code: c.postal_code } : {},
+    p_event_date: c.event_date || (null as unknown as string),
+    p_notes: c.notes,
+    p_customer_email: c.email,
+    p_hp: hp,
   });
   if (error) throw error;
   const row = data?.[0];
   if (!row) throw new Error("No se pudo registrar el pedido");
-  return { order_number: row.order_number, total: Number(row.total) };
+  const items = ((row.items as unknown as { name: string; quantity: number; unit_price: number }[]) ?? []).map((i) => ({ ...i, unit_price: Number(i.unit_price) }));
+  return { order_number: row.order_number, total: Number(row.total), items };
+}
+
+export async function updateOrderItems(orderId: string, items: { product_id: string; quantity: number }[]) {
+  const { error } = await supabase.rpc("update_order_items", { p_order_id: orderId, p_items: items });
+  if (error) throw error;
+}
+export async function markOrderDelivered(orderId: string) {
+  const { error } = await supabase.rpc("mark_order_delivered", { p_order_id: orderId });
+  if (error) throw error;
+}
+export async function voidConfirmedOrder(orderId: string, reason: string) {
+  const { error } = await supabase.rpc("void_confirmed_order", { p_order_id: orderId, p_reason: reason });
+  if (error) throw error;
+}
+export async function expirePendingOrders(hours = 48) {
+  const { data, error } = await supabase.rpc("expire_pending_orders", { p_hours: hours });
+  if (error) throw error;
+  return data ?? 0;
+}
+export async function createCounterSale(items: { product_id: string; quantity: number; unit_price?: number }[], note: string, allowNegative: boolean) {
+  const { data, error } = await supabase.rpc("create_counter_sale", { p_items: items, p_note: note, p_allow_negative: allowNegative });
+  if (error) throw error;
+  const row = data?.[0];
+  return { number: row?.order_number ?? 0, total: Number(row?.order_total ?? 0) };
 }
 
 /** Sube una foto al almacenamiento y devuelve una dirección duradera para mostrarla. */
@@ -518,6 +564,8 @@ export interface PanelOrder {
   id: string; number: number; customer_name: string; customer_phone: string; items: OrderItemRow[];
   total: number; status: "pendiente" | "confirmado" | "cancelado"; channel: string; created_at: string;
   confirmed_at: string | null;
+  customer_email: string; delivery_method: string; delivery_address: unknown; event_date: string | null;
+  notes: string; delivered_at: string | null; edited_at: string | null;
 }
 
 export function usePanelOrders() {
