@@ -36,9 +36,17 @@ const ASSETS: Record<string, string> = {
 
 /** Convierte lo guardado en la base en una dirección de imagen usable. */
 export function resolveImage(v: string): string {
-  if (!v) return "";
+  if (!v || v.startsWith("data:")) return "";
   if (v.startsWith("asset:")) return ASSETS[v.slice(6)] ?? "";
   return v;
+}
+
+function imageUrlList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (image): image is string =>
+      typeof image === "string" && Boolean(image.trim()) && !image.startsWith("data:"),
+  );
 }
 
 export const publicProductsQuery = queryOptions({
@@ -53,16 +61,76 @@ export const publicProductsQuery = queryOptions({
       categoryName: p.category_name,
       description: p.description,
       image: resolveImage(p.image_url),
+      images: (Array.isArray(p.image_urls) ? p.image_urls : p.image_url ? [p.image_url] : [])
+        .map((image) => resolveImage(String(image)))
+        .filter(Boolean),
       price: Number(p.price),
       availability: p.availability as Availability,
+      featured: Boolean(p.featured),
+      badge: String(p.badge ?? ""),
     }));
   },
 });
 
+export const bannersQuery = queryOptions({
+  queryKey: ["banners"],
+  queryFn: async () => {
+    const { data, error } = await supabase
+      .from("banners")
+      .select("*")
+      .eq("active", true)
+      .order("sort")
+      .order("created_at");
+    if (error) throw error;
+    return data ?? [];
+  },
+});
+
+export const adminBannersQuery = queryOptions({
+  queryKey: ["admin-banners"],
+  queryFn: async () => {
+    const { data, error } = await supabase.from("banners").select("*").order("sort").order("created_at");
+    if (error) throw error;
+    return data ?? [];
+  },
+});
+
+export async function saveBanner(input: {
+  id?: string;
+  title: string;
+  subtitle: string;
+  image_url: string;
+  link: string;
+  active: boolean;
+  sort: number;
+}) {
+  const { id, ...values } = input;
+  const query = id
+    ? supabase.from("banners").update(values).eq("id", id)
+    : supabase.from("banners").insert(values);
+  const { error } = await query;
+  if (error) throw error;
+}
+
+export async function deleteBanner(id: string) {
+  const { error } = await supabase.from("banners").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function linkProductPhotos() {
+  const baseUrl = `${import.meta.env["VITE_SUPABASE_URL"]}/storage/v1/object/public/productos`;
+  const { data, error } = await supabase.rpc("link_product_photos", { p_base_url: baseUrl });
+  if (error) throw error;
+  return data ?? 0;
+}
+
 export const categoriesQuery = queryOptions({
   queryKey: ["categories"],
   queryFn: async () => {
-    const { data, error } = await supabase.from("categories").select("id, slug, name, sort").order("sort");
+    const { data, error } = await supabase
+      .from("categories")
+      .select("id, slug, name, sort")
+      .order("sort");
     if (error) throw error;
     return data;
   },
@@ -71,7 +139,11 @@ export const categoriesQuery = queryOptions({
 export const settingsQuery = queryOptions({
   queryKey: ["settings"],
   queryFn: async () => {
-    const { data, error } = await supabase.from("business_settings").select("*").eq("id", 1).maybeSingle();
+    const { data, error } = await supabase
+      .from("business_settings")
+      .select("*")
+      .eq("id", 1)
+      .maybeSingle();
     if (error) throw error;
     return data;
   },
@@ -96,14 +168,27 @@ export const myRoleQuery = queryOptions({
     if (!u.user) return { email: "", role: null as null | "admin" | "vendedor" };
     const { data } = await supabase.from("user_roles").select("role").eq("user_id", u.user.id);
     const roles = (data ?? []).map((r) => r.role);
-    return { email: u.user.email ?? "", role: roles.includes("admin") ? ("admin" as const) : roles.includes("vendedor") ? ("vendedor" as const) : null };
+    return {
+      email: u.user.email ?? "",
+      role: roles.includes("admin")
+        ? ("admin" as const)
+        : roles.includes("vendedor")
+          ? ("vendedor" as const)
+          : null,
+    };
   },
 });
 
 /** Rol del usuario actual. undefined = todavía cargando. */
 export function useMyRole() {
   const me = useQuery(myRoleQuery);
-  return { role: me.data?.role, email: me.data?.email ?? "", isAdmin: me.data?.role === "admin", isStaff: me.data?.role != null, loading: me.isLoading };
+  return {
+    role: me.data?.role,
+    email: me.data?.email ?? "",
+    isAdmin: me.data?.role === "admin",
+    isStaff: me.data?.role != null,
+    loading: me.isLoading,
+  };
 }
 
 // Productos: el admin lee la tabla completa (con costos); el vendedor lee la vista sin costos.
@@ -115,7 +200,15 @@ export const adminProductsQuery = queryOptions({
       .select("*, categories(name)")
       .order("name");
     if (error) throw error;
-    return data.map((p) => ({ ...p, price: Number(p.price), cost: Number(p.cost), image: resolveImage(p.image_url) }));
+    return data.map((p) => ({
+      ...p,
+      price: Number(p.price),
+      cost: Number(p.cost),
+      image: resolveImage(p.image_url),
+      images: imageUrlList(p.image_urls),
+      featured: p.featured ?? false,
+      badge: p.badge ?? "",
+    }));
   },
 });
 export type AdminProduct = Awaited<ReturnType<typeof adminProductsQuery.queryFn & {}>>[number];
@@ -136,10 +229,13 @@ export const staffProductsQuery = queryOptions({
       description: p.description ?? "",
       image_url: p.image_url ?? "",
       image: resolveImage(p.image_url ?? ""),
+      images: imageUrlList(p.image_urls),
       price: Number(p.price ?? 0),
       stock: p.stock ?? 0,
       min_stock: p.min_stock ?? 0,
       active: p.active ?? false,
+      featured: p.featured ?? false,
+      badge: p.badge ?? "",
       categories: p.categories as { name: string } | null,
     }));
   },
@@ -158,12 +254,16 @@ export interface OrderItemRow {
 export const ordersQuery = queryOptions({
   queryKey: ["orders"],
   queryFn: async () => {
-    const { data, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false }).limit(300);
+    const { data, error } = await supabase
+      .from("orders")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(300);
     if (error) throw error;
     return data.map((o) => ({
       ...o,
       total: Number(o.total),
-      items: ((o.items as unknown as OrderItemRow[] | null) ?? []),
+      items: (o.items as unknown as OrderItemRow[] | null) ?? [],
       cost_total: Number(o.cost_total ?? 0),
     }));
   },
@@ -173,14 +273,18 @@ export type AdminOrder = Awaited<ReturnType<typeof ordersQuery.queryFn & {}>>[nu
 export const staffOrdersQuery = queryOptions({
   queryKey: ["staff-orders"],
   queryFn: async () => {
-    const { data, error } = await supabase.from("orders_staff").select("*").order("created_at", { ascending: false }).limit(300);
+    const { data, error } = await supabase
+      .from("orders_staff")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(300);
     if (error) throw error;
     return (data ?? []).map((o) => ({
       id: o.id ?? "",
       number: o.number ?? 0,
       customer_name: o.customer_name ?? "",
       customer_phone: o.customer_phone ?? "",
-      items: ((o.items as unknown as OrderItemRow[] | null) ?? []),
+      items: (o.items as unknown as OrderItemRow[] | null) ?? [],
       total: Number(o.total ?? 0),
       status: o.status ?? "pendiente",
       channel: o.channel ?? "whatsapp",
@@ -207,7 +311,10 @@ export const movementsQuery = queryOptions({
       .order("created_at", { ascending: false })
       .limit(100);
     if (error) throw error;
-    return data.map((m) => ({ ...m, productName: (m.products as { name: string } | null)?.name ?? "Producto eliminado" }));
+    return data.map((m) => ({
+      ...m,
+      productName: (m.products as { name: string } | null)?.name ?? "Producto eliminado",
+    }));
   },
 });
 export type AdminMovement = Awaited<ReturnType<typeof movementsQuery.queryFn & {}>>[number];
@@ -239,10 +346,20 @@ export const suppliersQuery = queryOptions({
   },
 });
 
-export async function saveSupplier(input: { id?: string; name: string; phone: string; notes: string }) {
+export async function saveSupplier(input: {
+  id?: string;
+  name: string;
+  phone: string;
+  notes: string;
+}) {
   const q = input.id
-    ? supabase.from("suppliers").update({ name: input.name, phone: input.phone, notes: input.notes }).eq("id", input.id)
-    : supabase.from("suppliers").insert({ name: input.name, phone: input.phone, notes: input.notes });
+    ? supabase
+        .from("suppliers")
+        .update({ name: input.name, phone: input.phone, notes: input.notes })
+        .eq("id", input.id)
+    : supabase
+        .from("suppliers")
+        .insert({ name: input.name, phone: input.phone, notes: input.notes });
   const { error } = await q;
   if (error) throw error;
 }
@@ -252,7 +369,15 @@ export async function deleteSupplier(id: string) {
   if (error) throw error;
 }
 
-export const EXPENSE_CATEGORIES = ["Alquiler", "Servicios", "Bolsas y packaging", "Flete", "Sueldos", "Impuestos", "Otros"] as const;
+export const EXPENSE_CATEGORIES = [
+  "Alquiler",
+  "Servicios",
+  "Bolsas y packaging",
+  "Flete",
+  "Sueldos",
+  "Impuestos",
+  "Otros",
+] as const;
 
 /** Gastos de un mes (aaaa-mm). */
 export const expensesQuery = (month: string) =>
@@ -271,12 +396,33 @@ export const expensesQuery = (month: string) =>
       return (data ?? []).map((e) => ({ ...e, amount: Number(e.amount) }));
     },
   });
-export type ExpenseRow = Awaited<ReturnType<ReturnType<typeof expensesQuery>["queryFn"] & {}>>[number];
+export type ExpenseRow = Awaited<
+  ReturnType<ReturnType<typeof expensesQuery>["queryFn"] & {}>
+>[number];
 
-export async function saveExpense(input: { id?: string; date: string; category: string; description: string; amount: number }) {
+export async function saveExpense(input: {
+  id?: string;
+  date: string;
+  category: string;
+  description: string;
+  amount: number;
+}) {
   const q = input.id
-    ? supabase.from("expenses").update({ date: input.date, category: input.category, description: input.description, amount: input.amount }).eq("id", input.id)
-    : supabase.from("expenses").insert({ date: input.date, category: input.category, description: input.description, amount: input.amount });
+    ? supabase
+        .from("expenses")
+        .update({
+          date: input.date,
+          category: input.category,
+          description: input.description,
+          amount: input.amount,
+        })
+        .eq("id", input.id)
+    : supabase.from("expenses").insert({
+        date: input.date,
+        category: input.category,
+        description: input.description,
+        amount: input.amount,
+      });
   const { error } = await q;
   if (error) throw error;
 }
@@ -295,7 +441,11 @@ export const purchasesQuery = queryOptions({
       .order("date", { ascending: false })
       .limit(200);
     if (error) throw error;
-    return (data ?? []).map((p) => ({ ...p, total: Number(p.total), supplierName: (p.suppliers as { name: string } | null)?.name ?? "Sin proveedor" }));
+    return (data ?? []).map((p) => ({
+      ...p,
+      total: Number(p.total),
+      supplierName: (p.suppliers as { name: string } | null)?.name ?? "Sin proveedor",
+    }));
   },
 });
 export type PurchaseRow = Awaited<ReturnType<typeof purchasesQuery.queryFn & {}>>[number];
@@ -309,7 +459,11 @@ export const purchaseItemsQuery = (purchaseId: string) =>
         .select("*, products(name)")
         .eq("purchase_id", purchaseId);
       if (error) throw error;
-      return (data ?? []).map((i) => ({ ...i, unit_cost: Number(i.unit_cost), productName: (i.products as { name: string } | null)?.name ?? "Producto" }));
+      return (data ?? []).map((i) => ({
+        ...i,
+        unit_cost: Number(i.unit_cost),
+        productName: (i.products as { name: string } | null)?.name ?? "Producto",
+      }));
     },
   });
 
@@ -333,7 +487,9 @@ export async function registerPurchase(input: {
 
 // ---------- Costos ----------
 
-export async function applyCosts(rows: { product_id: string; cost: number | null; supplier: string | null }[]) {
+export async function applyCosts(
+  rows: { product_id: string; cost: number | null; supplier: string | null }[],
+) {
   const { data, error } = await supabase.rpc("apply_costs", { p_rows: rows });
   if (error) throw error;
   return data ?? 0;
@@ -379,6 +535,9 @@ export interface ProductInput {
   min_stock: number;
   description: string;
   image_url?: string;
+  image_urls?: string[];
+  featured?: boolean;
+  badge?: string;
 }
 
 export async function createProduct(input: ProductInput & { slug: string; image_url: string }) {
@@ -391,6 +550,9 @@ export async function createProduct(input: ProductInput & { slug: string; image_
     min_stock: input.min_stock,
     description: input.description,
     image_url: input.image_url,
+    image_urls: input.image_urls ?? [],
+    featured: input.featured ?? false,
+    badge: input.badge ?? "",
   });
   if (error) throw error;
 }
@@ -406,6 +568,9 @@ export async function updateProduct(id: string, input: ProductInput & { image_ur
       min_stock: input.min_stock,
       description: input.description,
       image_url: input.image_url,
+      image_urls: input.image_urls ?? [],
+      featured: input.featured ?? false,
+      badge: input.badge ?? "",
     })
     .eq("id", id);
   if (error) throw error;
@@ -418,7 +583,10 @@ export async function setProductActive(id: string, active: boolean) {
 }
 
 /** Edición en línea de costo y proveedor (solo admin). */
-export async function updateProductInternals(id: string, input: { cost?: number; supplier?: string }) {
+export async function updateProductInternals(
+  id: string,
+  input: { cost?: number; supplier?: string },
+) {
   const { error } = await supabase.from("products").update(input).eq("id", id);
   if (error) throw error;
 }
@@ -434,18 +602,34 @@ export interface SettingsInput {
 }
 
 export async function saveSettings(values: SettingsInput) {
-  const { error } = await supabase.from("business_settings").update({ ...values, updated_at: new Date().toISOString() }).eq("id", 1);
+  const { error } = await supabase
+    .from("business_settings")
+    .update({ ...values, updated_at: new Date().toISOString() })
+    .eq("id", 1);
   if (error) throw error;
 }
 
-export async function adjustStock(productId: string, type: "entrada" | "salida" | "ajuste", quantity: number, reason: string) {
-  const { error } = await supabase.rpc("adjust_stock", { p_product_id: productId, p_type: type, p_quantity: quantity, p_reason: reason });
+export async function adjustStock(
+  productId: string,
+  type: "entrada" | "salida" | "ajuste",
+  quantity: number,
+  reason: string,
+) {
+  const { error } = await supabase.rpc("adjust_stock", {
+    p_product_id: productId,
+    p_type: type,
+    p_quantity: quantity,
+    p_reason: reason,
+  });
   if (error) throw error;
 }
 
 /** Confirma el pedido. Con allowNegative=false la base rechaza si falta stock. */
 export async function confirmOrder(orderId: string, allowNegative = false) {
-  const { error } = await supabase.rpc("confirm_order", { p_order_id: orderId, p_allow_negative: allowNegative });
+  const { error } = await supabase.rpc("confirm_order", {
+    p_order_id: orderId,
+    p_allow_negative: allowNegative,
+  });
   if (error) throw error;
 }
 
@@ -461,18 +645,33 @@ export interface NewOrderResult {
 }
 
 export interface CustomerData {
-  name: string; phone: string; email: string; delivery: "retiro" | "envio";
-  street: string; city: string; province: string; postal_code: string; event_date: string; notes: string;
+  name: string;
+  phone: string;
+  email: string;
+  delivery: "retiro" | "envio";
+  street: string;
+  city: string;
+  province: string;
+  postal_code: string;
+  event_date: string;
+  notes: string;
 }
 
 /** Registra el pedido en la base (queda PENDIENTE). Los precios se calculan en el servidor. */
-export async function createOrder(lines: { slug: string; quantity: number }[], c: CustomerData, hp: string): Promise<NewOrderResult> {
+export async function createOrder(
+  lines: { slug: string; quantity: number }[],
+  c: CustomerData,
+  hp: string,
+): Promise<NewOrderResult> {
   const { data, error } = await supabase.rpc("create_order", {
     p_items: lines.map((l) => ({ slug: l.slug, quantity: l.quantity })),
     p_customer_name: c.name,
     p_customer_phone: c.phone,
     p_delivery_method: c.delivery,
-    p_delivery_address: c.delivery === "envio" ? { street: c.street, city: c.city, province: c.province, postal_code: c.postal_code } : {},
+    p_delivery_address:
+      c.delivery === "envio"
+        ? { street: c.street, city: c.city, province: c.province, postal_code: c.postal_code }
+        : {},
     p_event_date: c.event_date || (null as unknown as string),
     p_notes: c.notes,
     p_customer_email: c.email,
@@ -481,12 +680,20 @@ export async function createOrder(lines: { slug: string; quantity: number }[], c
   if (error) throw error;
   const row = data?.[0];
   if (!row) throw new Error("No se pudo registrar el pedido");
-  const items = ((row.items as unknown as { name: string; quantity: number; unit_price: number }[]) ?? []).map((i) => ({ ...i, unit_price: Number(i.unit_price) }));
+  const items = (
+    (row.items as unknown as { name: string; quantity: number; unit_price: number }[]) ?? []
+  ).map((i) => ({ ...i, unit_price: Number(i.unit_price) }));
   return { order_number: row.order_number, total: Number(row.total), items };
 }
 
-export async function updateOrderItems(orderId: string, items: { product_id: string; quantity: number }[]) {
-  const { error } = await supabase.rpc("update_order_items", { p_order_id: orderId, p_items: items });
+export async function updateOrderItems(
+  orderId: string,
+  items: { product_id: string; quantity: number }[],
+) {
+  const { error } = await supabase.rpc("update_order_items", {
+    p_order_id: orderId,
+    p_items: items,
+  });
   if (error) throw error;
 }
 export async function markOrderDelivered(orderId: string) {
@@ -494,7 +701,10 @@ export async function markOrderDelivered(orderId: string) {
   if (error) throw error;
 }
 export async function voidConfirmedOrder(orderId: string, reason: string) {
-  const { error } = await supabase.rpc("void_confirmed_order", { p_order_id: orderId, p_reason: reason });
+  const { error } = await supabase.rpc("void_confirmed_order", {
+    p_order_id: orderId,
+    p_reason: reason,
+  });
   if (error) throw error;
 }
 export async function expirePendingOrders(hours = 48) {
@@ -502,24 +712,120 @@ export async function expirePendingOrders(hours = 48) {
   if (error) throw error;
   return data ?? 0;
 }
-export async function createCounterSale(items: { product_id: string; quantity: number; unit_price?: number }[], note: string, allowNegative: boolean) {
-  const { data, error } = await supabase.rpc("create_counter_sale", { p_items: items, p_note: note, p_allow_negative: allowNegative });
+export async function createCounterSale(
+  items: { product_id: string; quantity: number; unit_price?: number }[],
+  note: string,
+  allowNegative: boolean,
+) {
+  const { data, error } = await supabase.rpc("create_counter_sale", {
+    p_items: items,
+    p_note: note,
+    p_allow_negative: allowNegative,
+  });
   if (error) throw error;
   const row = data?.[0];
   return { number: row?.order_number ?? 0, total: Number(row?.order_total ?? 0) };
 }
 
-/** Sube una foto al almacenamiento y devuelve una dirección duradera para mostrarla. */
-export async function uploadProductImage(file: File): Promise<string> {
+export interface UploadProgress {
+  completed: number;
+  total: number;
+  percent: number;
+  phase: "compressing" | "uploading";
+}
+
+async function compressProductImage(file: File): Promise<File> {
   if (!file.type.startsWith("image/")) throw new Error("El archivo debe ser una imagen");
-  if (file.size > 5 * 1024 * 1024) throw new Error("La foto no puede pesar más de 5 MB");
-  const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-  const path = `${crypto.randomUUID()}.${ext}`;
-  const up = await supabase.storage.from("productos").upload(path, file, { contentType: file.type });
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    throw new Error("No se pudo leer la imagen");
+  }
+  try {
+    const scale = Math.min(1, 1200 / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("No se pudo preparar la imagen");
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (result) => result ? resolve(result) : reject(new Error("No se pudo comprimir la imagen")),
+        "image/webp",
+        0.82,
+      );
+    });
+    const baseName = file.name.replace(/\.[^.]+$/, "") || "producto";
+    return new File([blob], `${baseName}.webp`, { type: "image/webp" });
+  } finally {
+    bitmap.close();
+  }
+}
+
+export async function uploadProductImage(
+  file: File,
+  onProgress?: (progress: UploadProgress) => void,
+): Promise<string> {
+  onProgress?.({ completed: 0, total: 1, percent: 5, phase: "compressing" });
+  const compressed = await compressProductImage(file);
+  const path = `${crypto.randomUUID()}.webp`;
+  onProgress?.({ completed: 0, total: 1, percent: 25, phase: "uploading" });
+  const up = await supabase.storage
+    .from("productos")
+    .upload(path, compressed, { contentType: "image/webp" });
   if (up.error) throw up.error;
-  const signed = await supabase.storage.from("productos").createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
-  if (signed.error) throw signed.error;
-  return signed.data.signedUrl;
+  const { data } = supabase.storage.from("productos").getPublicUrl(path);
+  onProgress?.({ completed: 1, total: 1, percent: 100, phase: "uploading" });
+  return data.publicUrl;
+}
+
+export async function uploadBulkProductImages(
+  files: File[],
+  onProgress?: (progress: UploadProgress) => void,
+): Promise<void> {
+  if (files.some((file) => !/\.webp$/i.test(file.name))) {
+    throw new Error("Todas las fotos deben ser archivos .webp");
+  }
+  const bucket = supabase.storage.from("productos");
+  for (const [index, file] of files.entries()) {
+    onProgress?.({
+      completed: index,
+      total: files.length,
+      percent: Math.round((index / files.length) * 100),
+      phase: "uploading",
+    });
+    const { error } = await bucket.upload(file.name, file, {
+      contentType: "image/webp",
+      upsert: true,
+    });
+    if (error) throw error;
+    onProgress?.({
+      completed: index + 1,
+      total: files.length,
+      percent: Math.round(((index + 1) / files.length) * 100),
+      phase: "uploading",
+    });
+  }
+}
+
+export async function deleteProductImage(publicUrl: string) {
+  const marker = "/storage/v1/object/public/productos/";
+  const index = publicUrl.indexOf(marker);
+  if (index < 0) return;
+  const path = decodeURIComponent(publicUrl.slice(index + marker.length).split("?")[0] ?? "");
+  if (!path) return;
+  const { error } = await supabase.storage.from("productos").remove([path]);
+  if (error) throw error;
+}
+
+export async function updateProductPhoto(id: string, imageUrl: string) {
+  const { error } = await supabase
+    .from("products")
+    .update({ image_url: imageUrl, image_urls: imageUrl ? [imageUrl] : [] })
+    .eq("id", id);
+  if (error) throw error;
 }
 
 export function slugify(s: string): string {
@@ -533,7 +839,12 @@ export function slugify(s: string): string {
 }
 
 export function errorMessage(e: unknown): string {
-  const m = e instanceof Error ? e.message : typeof e === "object" && e && "message" in e ? String((e as { message: unknown }).message) : "Ocurrió un error";
+  const m =
+    e instanceof Error
+      ? e.message
+      : typeof e === "object" && e && "message" in e
+        ? String((e as { message: unknown }).message)
+        : "Ocurrió un error";
   if (/duplicate key.*slug/i.test(m)) return "Ya existe un producto con ese nombre";
   if (/permission|Sin permiso|row-level/i.test(m)) return "No tenés permiso para hacer esto";
   return m;
@@ -542,11 +853,22 @@ export function errorMessage(e: unknown): string {
 // ---------- Lectura según rol ----------
 
 export interface PanelProduct {
-  id: string; slug: string; name: string; category_id: string | null; description: string;
-  image_url: string; image: string; price: number; stock: number; min_stock: number; active: boolean;
+  id: string;
+  slug: string;
+  name: string;
+  category_id: string | null;
+  description: string;
+  image_url: string;
+  image: string;
+  images: string[];
+  price: number;
+  stock: number;
+  min_stock: number;
+  active: boolean;
   categories: { name: string } | null;
   /** Solo para el admin (undefined para el vendedor). */
-  cost?: number; supplier?: string;
+  cost?: number;
+  supplier?: string;
 }
 
 /** Productos: el admin lee la tabla; el vendedor la vista sin costos. */
@@ -561,11 +883,23 @@ export function usePanelProducts() {
 }
 
 export interface PanelOrder {
-  id: string; number: number; customer_name: string; customer_phone: string; items: OrderItemRow[];
-  total: number; status: "pendiente" | "confirmado" | "cancelado"; channel: string; created_at: string;
+  id: string;
+  number: number;
+  customer_name: string;
+  customer_phone: string;
+  items: OrderItemRow[];
+  total: number;
+  status: "pendiente" | "confirmado" | "cancelado";
+  channel: string;
+  created_at: string;
   confirmed_at: string | null;
-  customer_email: string; delivery_method: string; delivery_address: unknown; event_date: string | null;
-  notes: string; delivered_at: string | null; edited_at: string | null;
+  customer_email: string;
+  delivery_method: string;
+  delivery_address: unknown;
+  event_date: string | null;
+  notes: string;
+  delivered_at: string | null;
+  edited_at: string | null;
 }
 
 export function usePanelOrders() {
@@ -592,7 +926,9 @@ export function todayAR(offsetDays = 0): string {
 /** Interpreta números en formato argentino (1.234,50) o con punto decimal; ignora $ y espacios. */
 export function parseArNumber(raw: unknown): number | null {
   if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
-  let s = String(raw ?? "").replace(/[$\s]|ARS/gi, "").trim();
+  let s = String(raw ?? "")
+    .replace(/\s|ARS|USD|US\$|AR\$|[$€£¥₽]/gi, "")
+    .trim();
   if (!s) return null;
   if (s.includes(",")) s = s.replace(/\./g, "").replace(",", ".");
   else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, "");
@@ -601,5 +937,10 @@ export function parseArNumber(raw: unknown): number | null {
 }
 
 export function normalizeName(s: string): string {
-  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
 }

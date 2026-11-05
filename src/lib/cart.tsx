@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
 interface CartContextValue {
   /** Solo guarda slug y cantidad; los precios siempre se leen de la base. */
@@ -28,8 +36,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (loaded) localStorage.setItem(KEY, JSON.stringify(items));
+    if (loaded) {
+      try {
+        localStorage.setItem(KEY, JSON.stringify(items));
+      } catch {
+        /* El carrito sigue disponible durante la sesión. */
+      }
+    }
   }, [items, loaded]);
+  const clear = useCallback(() => setItems({}), []);
 
   const value = useMemo<CartContextValue>(
     () => ({
@@ -43,9 +58,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
           delete n[slug];
           return n;
         }),
-      clear: () => setItems({}),
+      clear,
     }),
-    [items],
+    [items, clear],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

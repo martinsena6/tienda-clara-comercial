@@ -95,6 +95,39 @@ export type Database = {
         }
         Relationships: []
       }
+      banners: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          image_url: string
+          link: string
+          sort: number
+          subtitle: string
+          title: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          image_url?: string
+          link?: string
+          sort?: number
+          subtitle?: string
+          title?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          image_url?: string
+          link?: string
+          sort?: number
+          subtitle?: string
+          title?: string
+        }
+        Relationships: []
+      }
       business_settings: {
         Row: {
           address: string
@@ -296,12 +329,15 @@ export type Database = {
       products: {
         Row: {
           active: boolean
+          badge: string
           category_id: string | null
           cost: number
           created_at: string
           description: string
+          featured: boolean
           id: string
           image_url: string
+          image_urls: Json
           min_stock: number
           name: string
           price: number
@@ -312,12 +348,15 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          badge?: string
           category_id?: string | null
           cost?: number
           created_at?: string
           description?: string
+          featured?: boolean
           id?: string
           image_url?: string
+          image_urls?: Json
           min_stock?: number
           name: string
           price?: number
@@ -328,12 +367,15 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          badge?: string
           category_id?: string | null
           cost?: number
           created_at?: string
           description?: string
+          featured?: boolean
           id?: string
           image_url?: string
+          image_urls?: Json
           min_stock?: number
           name?: string
           price?: number
@@ -591,11 +633,14 @@ export type Database = {
       products_staff: {
         Row: {
           active: boolean | null
+          badge: string | null
           category_id: string | null
           created_at: string | null
           description: string | null
+          featured: boolean | null
           id: string | null
           image_url: string | null
+          image_urls: Json | null
           min_stock: number | null
           name: string | null
           price: number | null
@@ -605,11 +650,14 @@ export type Database = {
         }
         Insert: {
           active?: boolean | null
+          badge?: string | null
           category_id?: string | null
           created_at?: string | null
           description?: string | null
+          featured?: boolean | null
           id?: string | null
           image_url?: string | null
+          image_urls?: Json | null
           min_stock?: number | null
           name?: string | null
           price?: number | null
@@ -619,11 +667,14 @@ export type Database = {
         }
         Update: {
           active?: boolean | null
+          badge?: string | null
           category_id?: string | null
           created_at?: string | null
           description?: string | null
+          featured?: boolean | null
           id?: string | null
           image_url?: string | null
+          image_urls?: Json | null
           min_stock?: number | null
           name?: string | null
           price?: number | null
@@ -689,15 +740,19 @@ export type Database = {
         Args: never
         Returns: {
           availability: string
+          badge: string
           category_name: string
           category_slug: string
           description: string
+          featured: boolean
           image_url: string
+          image_urls: Json
           name: string
           price: number
           slug: string
         }[]
       }
+      link_product_photos: { Args: { p_base_url: string }; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

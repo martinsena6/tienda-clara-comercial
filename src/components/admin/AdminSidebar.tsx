@@ -1,5 +1,18 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { BarChart3, Boxes, LayoutDashboard, Package, Settings, ShoppingBag, Store, Tags, Truck, Users, Wallet } from "lucide-react";
+import {
+  BarChart3,
+  Boxes,
+  LayoutDashboard,
+  Images,
+  Package,
+  Settings,
+  ShoppingBag,
+  Store,
+  Tags,
+  Truck,
+  Users,
+  Wallet,
+} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -28,6 +41,7 @@ const groups: { label: string; items: Item[] }[] = [
     label: "Inventario",
     items: [
       { title: "Productos", url: "/admin/productos", icon: Package },
+      { title: "Banners", url: "/admin/banners", icon: Images, adminOnly: true },
       { title: "Stock", url: "/admin/stock", icon: Boxes },
       { title: "Costos", url: "/admin/costos", icon: Tags, adminOnly: true },
     ],
@@ -55,7 +69,8 @@ export function AdminSidebar() {
   const name = useQuery(settingsQuery).data?.name ?? DEFAULT_SETTINGS.name;
   const { isAdmin } = useMyRole();
   const path = useRouterState({ select: (s) => s.location.pathname });
-  const isActive = (url: string) => (url === "/admin" ? path === "/admin" || path === "/admin/" : path.startsWith(url));
+  const isActive = (url: string) =>
+    url === "/admin" ? path === "/admin" || path === "/admin/" : path.startsWith(url);
 
   return (
     <Sidebar collapsible="icon">

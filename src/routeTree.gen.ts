@@ -17,6 +17,7 @@ import { Route as CatalogoCarritoRouteImport } from './routes/catalogo.carrito'
 import { Route as CatalogoCategoriasRouteImport } from './routes/catalogo.categorias'
 import { Route as CatalogoProductosRouteImport } from './routes/catalogo.productos'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as AuthenticatedAdminBannersRouteImport } from './routes/_authenticated/admin.banners'
 import { Route as AuthenticatedAdminComprasRouteImport } from './routes/_authenticated/admin.compras'
 import { Route as AuthenticatedAdminConfiguracionRouteImport } from './routes/_authenticated/admin.configuracion'
 import { Route as AuthenticatedAdminCostosRouteImport } from './routes/_authenticated/admin.costos'
@@ -69,6 +70,12 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminBannersRoute =
+  AuthenticatedAdminBannersRouteImport.update({
+    id: '/banners',
+    path: '/banners',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminComprasRoute =
   AuthenticatedAdminComprasRouteImport.update({
     id: '/compras',
@@ -146,6 +153,7 @@ export interface FileRoutesByFullPath {
   '/catalogo/carrito': typeof CatalogoCarritoRoute
   '/catalogo/categorias': typeof CatalogoCategoriasRoute
   '/catalogo/productos': typeof CatalogoProductosRoute
+  '/admin/banners': typeof AuthenticatedAdminBannersRoute
   '/admin/compras': typeof AuthenticatedAdminComprasRoute
   '/admin/configuracion': typeof AuthenticatedAdminConfiguracionRoute
   '/admin/costos': typeof AuthenticatedAdminCostosRoute
@@ -166,6 +174,7 @@ export interface FileRoutesByTo {
   '/catalogo/carrito': typeof CatalogoCarritoRoute
   '/catalogo/categorias': typeof CatalogoCategoriasRoute
   '/catalogo/productos': typeof CatalogoProductosRoute
+  '/admin/banners': typeof AuthenticatedAdminBannersRoute
   '/admin/compras': typeof AuthenticatedAdminComprasRoute
   '/admin/configuracion': typeof AuthenticatedAdminConfiguracionRoute
   '/admin/costos': typeof AuthenticatedAdminCostosRoute
@@ -189,6 +198,7 @@ export interface FileRoutesById {
   '/catalogo/carrito': typeof CatalogoCarritoRoute
   '/catalogo/categorias': typeof CatalogoCategoriasRoute
   '/catalogo/productos': typeof CatalogoProductosRoute
+  '/_authenticated/admin/banners': typeof AuthenticatedAdminBannersRoute
   '/_authenticated/admin/compras': typeof AuthenticatedAdminComprasRoute
   '/_authenticated/admin/configuracion': typeof AuthenticatedAdminConfiguracionRoute
   '/_authenticated/admin/costos': typeof AuthenticatedAdminCostosRoute
@@ -212,6 +222,7 @@ export interface FileRouteTypes {
     | '/catalogo/carrito'
     | '/catalogo/categorias'
     | '/catalogo/productos'
+    | '/admin/banners'
     | '/admin/compras'
     | '/admin/configuracion'
     | '/admin/costos'
@@ -232,6 +243,7 @@ export interface FileRouteTypes {
     | '/catalogo/carrito'
     | '/catalogo/categorias'
     | '/catalogo/productos'
+    | '/admin/banners'
     | '/admin/compras'
     | '/admin/configuracion'
     | '/admin/costos'
@@ -254,6 +266,7 @@ export interface FileRouteTypes {
     | '/catalogo/carrito'
     | '/catalogo/categorias'
     | '/catalogo/productos'
+    | '/_authenticated/admin/banners'
     | '/_authenticated/admin/compras'
     | '/_authenticated/admin/configuracion'
     | '/_authenticated/admin/costos'
@@ -336,6 +349,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/banners': {
+      id: '/_authenticated/admin/banners'
+      path: '/banners'
+      fullPath: '/admin/banners'
+      preLoaderRoute: typeof AuthenticatedAdminBannersRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/compras': {
@@ -426,6 +446,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminBannersRoute: typeof AuthenticatedAdminBannersRoute
   AuthenticatedAdminComprasRoute: typeof AuthenticatedAdminComprasRoute
   AuthenticatedAdminConfiguracionRoute: typeof AuthenticatedAdminConfiguracionRoute
   AuthenticatedAdminCostosRoute: typeof AuthenticatedAdminCostosRoute
@@ -440,6 +461,7 @@ interface AuthenticatedAdminRouteChildren {
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminBannersRoute: AuthenticatedAdminBannersRoute,
   AuthenticatedAdminComprasRoute: AuthenticatedAdminComprasRoute,
   AuthenticatedAdminConfiguracionRoute: AuthenticatedAdminConfiguracionRoute,
   AuthenticatedAdminCostosRoute: AuthenticatedAdminCostosRoute,

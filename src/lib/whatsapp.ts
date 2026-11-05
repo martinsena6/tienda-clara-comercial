@@ -7,9 +7,15 @@ export interface WhatsAppLine {
 }
 
 /** Arma el texto del pedido. El pedido queda PENDIENTE: no es una venta confirmada. */
-export function buildWhatsAppMessage(businessName: string, lines: WhatsAppLine[], orderNumber?: number): string {
+export function buildWhatsAppMessage(
+  businessName: string,
+  lines: WhatsAppLine[],
+  orderNumber?: number,
+): string {
   const total = lines.reduce((s, l) => s + l.quantity * l.price, 0);
-  const detail = lines.map((l) => `• ${l.quantity} x ${l.name} — ${formatPrice(l.quantity * l.price)}`);
+  const detail = lines.map(
+    (l) => `• ${l.quantity} x ${l.name} — ${formatPrice(l.quantity * l.price)}`,
+  );
   return [
     `Hola ${businessName}, quiero hacer este pedido:`,
     ...(orderNumber ? ["", `Pedido #${orderNumber}`] : []),
@@ -23,6 +29,13 @@ export function buildWhatsAppMessage(businessName: string, lines: WhatsAppLine[]
 
 export function buildWhatsAppUrl(phone: string, message: string): string {
   return `https://wa.me/${phone.replace(/\D/g, "")}?text=${encodeURIComponent(message)}`;
+}
+
+export function arWhatsAppPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("549")) return digits;
+  if (digits.startsWith("54")) return `549${digits.slice(2).replace(/^9/, "")}`;
+  return digits.length === 10 ? `549${digits}` : digits;
 }
 
 export interface OrderMessageData {
@@ -42,7 +55,9 @@ export function buildOrderMessage(businessName: string, o: OrderMessageData): st
   return [
     `Hola ${businessName}, hice el pedido #${o.number}:`,
     "",
-    ...o.items.map((i) => `• ${i.quantity} x ${i.name} — ${formatPrice(i.quantity * i.unit_price)}`),
+    ...o.items.map(
+      (i) => `• ${i.quantity} x ${i.name} — ${formatPrice(i.quantity * i.unit_price)}`,
+    ),
     "",
     `Total: ${formatPrice(o.total)}`,
     "",

@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { CatalogLayout } from "@/components/catalog/CatalogLayout";
+import { ProductImage } from "@/components/catalog/ProductImage";
 import { categoriesQuery, publicProductsQuery } from "@/lib/data";
 
 export const Route = createFileRoute("/catalogo/categorias")({
@@ -34,7 +35,7 @@ function Categorias() {
           return (
             <Link key={c.id} to="/catalogo/productos" search={{ categoria: c.slug }} className="group overflow-hidden rounded-2xl border bg-card shadow-soft hover:shadow-lift">
               <div className="aspect-[4/3] bg-muted">
-                {items[0] && <img src={items[0].image} alt={c.name} loading="lazy" width={816} height={816} className="size-full object-cover transition-transform duration-500 group-hover:scale-105" />}
+                {items[0] && <ProductImage src={items[0].images[0] || items[0].image} alt={c.name} className="size-full transition-transform duration-500 group-hover:scale-105" imgClassName="size-full object-cover" />}
               </div>
               <div className="p-4">
                 <div className="font-display font-semibold">{c.name}</div>

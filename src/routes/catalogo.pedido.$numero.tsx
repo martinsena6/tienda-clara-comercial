@@ -6,68 +6,141 @@ import { Button } from "@/components/ui/button";
 import { CatalogLayout, useSettings } from "@/components/catalog/CatalogLayout";
 import { useCart } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
-import { buildOrderMessage, buildWhatsAppUrl, type OrderMessageData } from "@/lib/whatsapp";
+import { buildOrderMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
+
+interface OrderPayload {
+  number: number;
+  total: number;
+  items: { name: string; quantity: number; unit_price: number }[];
+  name: string;
+  phone: string;
+  delivery: "retiro" | "envio";
+  address: string;
+  eventDate: string;
+  notes: string;
+}
+
+function isOrderPayload(value: unknown, expectedNumber: number): value is OrderPayload {
+  if (!value || typeof value !== "object") return false;
+  const o = value as Record<string, unknown>;
+  return (
+    o["number"] === expectedNumber &&
+    typeof o["total"] === "number" &&
+    typeof o["name"] === "string" &&
+    typeof o["phone"] === "string" &&
+    (o["delivery"] === "retiro" || o["delivery"] === "envio") &&
+    Array.isArray(o["items"]) &&
+    o["items"].every(
+      (item) =>
+        item &&
+        typeof item.name === "string" &&
+        typeof item.quantity === "number" &&
+        typeof item.unit_price === "number",
+    )
+  );
+}
 
 export const Route = createFileRoute("/catalogo/pedido/$numero")({
   head: () => ({
     meta: [
       { title: "Pedido registrado — Festiva" },
-      { name: "description", content: "Tu pedido quedó registrado. Envialo por WhatsApp." },
-      { property: "og:title", content: "Pedido registrado — Festiva" },
-      { property: "og:description", content: "Tu pedido quedó registrado." },
+      { name: "description", content: "Resumen de tu pedido registrado." },
       { name: "robots", content: "noindex" },
     ],
   }),
-  component: Pedido,
+  component: PedidoRegistrado,
 });
 
-function Pedido() {
+function PedidoRegistrado() {
   const { numero } = Route.useParams();
   const settings = useSettings();
   const { clear } = useCart();
-  const [order, setOrder] = useState<OrderMessageData | null | undefined>(undefined);
+  const [payload, setPayload] = useState<OrderPayload | null>(null);
 
   useEffect(() => {
-    let o: OrderMessageData | null = null;
-    try { const s = sessionStorage.getItem(`festiva-pedido-${numero}`); if (s) o = JSON.parse(s); } catch { /* sin almacenamiento */ }
-    setOrder(o);
-    if (o) clear();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [numero]);
+    const number = Number(numero);
+    if (!Number.isSafeInteger(number) || number <= 0) return;
+    try {
+      const raw = sessionStorage.getItem(`festiva-pedido-${number}`);
+      if (!raw) return;
+      const parsed: unknown = JSON.parse(raw);
+      if (!isOrderPayload(parsed, number)) return;
+      setPayload(parsed);
+      clear();
+    } catch {
+      setPayload(null);
+    }
+  }, [numero, clear]);
 
-  if (order === undefined) return <CatalogLayout><p className="text-muted-foreground">Cargando…</p></CatalogLayout>;
-  if (!order) {
+  if (!payload) {
     return (
       <CatalogLayout>
-        <div className="mx-auto max-w-md rounded-2xl border bg-card p-8 text-center">
-          <p>No encontramos los datos de este pedido en este dispositivo.</p>
-          <Button asChild className="mt-4"><Link to="/catalogo/productos">Ir al catálogo</Link></Button>
-        </div>
+        <section className="mx-auto max-w-xl rounded-2xl border bg-card p-8 text-center">
+          <h1 className="text-xl font-semibold">No encontramos los datos de este pedido</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Volvé al catálogo para armar un nuevo pedido.
+          </p>
+          <Button asChild className="mt-5">
+            <Link to="/catalogo/productos">Ir al catálogo</Link>
+          </Button>
+        </section>
       </CatalogLayout>
     );
   }
-  const msg = buildOrderMessage(settings.name, order);
-  const copy = async () => {
-    try { await navigator.clipboard.writeText(msg); toast.success("Mensaje copiado"); } catch { toast.error("No se pudo copiar"); }
+
+  const message = buildOrderMessage(settings.name, payload);
+  const whatsappUrl = buildWhatsAppUrl(settings.whatsapp, message);
+  const copyMessage = async () => {
+    try {
+      await navigator.clipboard.writeText(message);
+      toast.success("Mensaje copiado");
+    } catch {
+      toast.error("No se pudo copiar el mensaje. Seleccionalo y copialo manualmente.");
+    }
   };
+
   return (
     <CatalogLayout>
-      <div className="mx-auto max-w-lg space-y-5 rounded-2xl border bg-card p-6 shadow-soft">
+      <section className="mx-auto max-w-2xl rounded-2xl border bg-card p-6 shadow-soft sm:p-8">
         <div className="text-center">
           <CheckCircle2 className="mx-auto size-12 text-success" />
-          <h1 className="mt-2 text-2xl font-bold">¡Pedido #{order.number} registrado!</h1>
-          <p className="text-sm text-muted-foreground">Envialo por WhatsApp para que lo confirmemos.</p>
+          <h1 className="mt-3 font-display text-2xl font-bold">
+            ¡Pedido #{payload.number} registrado!
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Tu pedido queda pendiente hasta que el negocio confirme la disponibilidad.
+          </p>
         </div>
-        <ul className="divide-y text-sm">
-          {order.items.map((i) => <li key={i.name} className="flex justify-between py-1.5"><span>{i.quantity} x {i.name}</span><span>{formatPrice(i.quantity * i.unit_price)}</span></li>)}
+        <ul className="my-6 divide-y border-y">
+          {payload.items.map((item, index) => (
+            <li key={`${item.name}-${index}`} className="flex justify-between gap-4 py-3 text-sm">
+              <span>
+                {item.quantity} × {item.name}
+              </span>
+              <span className="whitespace-nowrap font-medium">
+                {formatPrice(item.quantity * item.unit_price)}
+              </span>
+            </li>
+          ))}
         </ul>
-        <div className="flex justify-between text-lg font-bold"><span>Total</span><span>{formatPrice(order.total)}</span></div>
-        <p className="text-sm text-muted-foreground">{order.delivery === "envio" ? `Envío a ${order.address}` : "Retiro en el local"}{order.eventDate ? ` · Evento: ${order.eventDate}` : ""}</p>
-        <Button asChild size="lg" className="w-full bg-whatsapp text-whatsapp-foreground hover:bg-whatsapp/90">
-          <a href={buildWhatsAppUrl(settings.whatsapp, msg)} target="_blank" rel="noopener noreferrer"><MessageCircle /> Enviar por WhatsApp</a>
-        </Button>
-        <Button variant="outline" className="w-full" onClick={copy}><Copy /> Copiar mensaje</Button>
-      </div>
+        <div className="mb-6 flex justify-between text-lg font-semibold">
+          <span>Total</span>
+          <span>{formatPrice(payload.total)}</span>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-whatsapp px-4 py-2 text-sm font-medium text-whatsapp-foreground hover:bg-whatsapp/90"
+          >
+            <MessageCircle className="size-4" /> Enviar por WhatsApp
+          </a>
+          <Button variant="outline" onClick={copyMessage}>
+            <Copy /> Copiar mensaje
+          </Button>
+        </div>
+      </section>
     </CatalogLayout>
   );
 }

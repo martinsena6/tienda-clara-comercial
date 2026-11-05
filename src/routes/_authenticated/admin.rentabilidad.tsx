@@ -2,8 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { ReportPanel } from "@/components/admin/ReportPanel";
 import { RequireAdmin } from "@/components/admin/RequireAdmin";
+import { requireAdminRoute } from "@/lib/auth";
 
 export const Route = createFileRoute("/_authenticated/admin/rentabilidad")({
+  beforeLoad: requireAdminRoute,
   head: () => ({
     meta: [
       { title: "Rentabilidad — Panel Festiva" },
@@ -14,7 +16,10 @@ export const Route = createFileRoute("/_authenticated/admin/rentabilidad")({
   }),
   component: () => (
     <RequireAdmin>
-      <PageHeader title="Rentabilidad" description="Calculada con ventas confirmadas y el costo congelado de cada venta." />
+      <PageHeader
+        title="Rentabilidad"
+        description="Calculada con ventas confirmadas y el costo congelado de cada venta."
+      />
       <ReportPanel />
     </RequireAdmin>
   ),

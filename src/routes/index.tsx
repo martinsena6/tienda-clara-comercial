@@ -4,8 +4,10 @@ import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { CatalogLayout } from "@/components/catalog/CatalogLayout";
 import { ProductCard } from "@/components/catalog/ProductCard";
-import { categoriesQuery, publicProductsQuery } from "@/lib/data";
+import { ProductImage } from "@/components/catalog/ProductImage";
+import { bannersQuery, categoriesQuery, publicProductsQuery } from "@/lib/data";
 import heroImg from "@/assets/festiva-portada.jpg.asset.json";
+import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -30,7 +32,15 @@ export const Route = createFileRoute("/")({
 function Home() {
   const { data: products } = useSuspenseQuery(publicProductsQuery);
   const { data: categories } = useQuery(categoriesQuery);
-  const featured = products.slice(0, 4);
+  const { data: banners = [] } = useQuery(bannersQuery);
+  const [bannerIndex, setBannerIndex] = useState(0);
+  const featured = products.filter((product) => product.featured).slice(0, 4);
+  const banner = banners.length ? banners[bannerIndex % banners.length] : null;
+  useEffect(() => {
+    if (banners.length < 2) return;
+    const timer = window.setInterval(() => setBannerIndex((index) => (index + 1) % banners.length), 5000);
+    return () => window.clearInterval(timer);
+  }, [banners.length]);
   return (
     <CatalogLayout>
       <section className="grid items-center gap-8 overflow-hidden rounded-3xl bg-secondary p-6 sm:p-10 md:grid-cols-2">
@@ -45,6 +55,22 @@ function Home() {
         </div>
         <img src={heroImg.url} alt="Festiva, todo para festejar" width={816} height={816} className="mx-auto aspect-square w-full max-w-sm rounded-2xl object-cover shadow-lift" />
       </section>
+
+      {banner && <section className="relative mt-8 overflow-hidden rounded-2xl border bg-secondary">
+        <div className="grid items-center sm:grid-cols-2">
+          <div className="p-6 sm:p-8">
+            <p className="text-sm font-semibold text-primary">Novedades</p>
+            <h2 className="mt-2 text-2xl font-bold">{banner.title}</h2>
+            {banner.subtitle && <p className="mt-2 text-muted-foreground">{banner.subtitle}</p>}
+            {banner.link && <Button asChild className="mt-4"><a href={banner.link}>Ver más</a></Button>}
+          </div>
+          <ProductImage src={banner.image_url} alt={banner.title} className="aspect-video w-full" imgClassName="size-full object-cover" />
+        </div>
+        {banners.length > 1 && <div className="absolute bottom-3 right-3 flex gap-2">
+          <Button size="sm" variant="secondary" aria-label="Banner anterior" onClick={() => setBannerIndex((index) => (index - 1 + banners.length) % banners.length)}>‹</Button>
+          <Button size="sm" variant="secondary" aria-label="Banner siguiente" onClick={() => setBannerIndex((index) => (index + 1) % banners.length)}>›</Button>
+        </div>}
+      </section>}
 
       <section className="mt-8 grid gap-3 sm:grid-cols-3">
         {[
@@ -74,7 +100,7 @@ function Home() {
           <Link to="/catalogo/productos" className="text-sm font-medium text-primary">Ver todo</Link>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {featured.map((p) => <ProductCard key={p.slug} product={p} />)}
+          {featured.length ? featured.map((p) => <ProductCard key={p.slug} product={p} />) : <p className="col-span-full text-sm text-muted-foreground">Próximamente habrá productos destacados.</p>}
         </div>
       </section>
     </CatalogLayout>

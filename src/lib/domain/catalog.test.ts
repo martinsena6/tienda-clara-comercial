@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { getAvailability, marginPct, searchPublicProducts } from "./catalog";
+import { filterPublicProducts, getAvailability, marginPct, searchPublicProducts } from "./catalog";
 import { buildWhatsAppMessage } from "../whatsapp";
 import type { PublicProduct } from "./types";
 
 const sample: PublicProduct[] = [
-  { slug: "a", name: "Chupetín Emoji", categorySlug: "chupetines", categoryName: "Chupetines", description: "", image: "", price: 100, availability: "disponible" },
-  { slug: "b", name: "Goma Piñata", categorySlug: "gomitas", categoryName: "Gomitas", description: "", image: "", price: 200, availability: "sin_stock" },
+  { slug: "a", name: "Chupetín Emoji", categorySlug: "chupetines", categoryName: "Chupetines", description: "", image: "", images: [], price: 100, availability: "disponible", featured: false, badge: "" },
+  { slug: "b", name: "Goma Piñata", categorySlug: "gomitas", categoryName: "Gomitas", description: "", image: "", images: [], price: 200, availability: "sin_stock", featured: false, badge: "" },
 ];
 
 describe("catálogo", () => {
@@ -18,6 +18,13 @@ describe("catálogo", () => {
   it("busca por nombre y categoría", () => {
     expect(searchPublicProducts(sample, "emoji").map((p) => p.slug)).toEqual(["a"]);
     expect(searchPublicProducts(sample, undefined, "gomitas").map((p) => p.slug)).toEqual(["b"]);
+    expect(searchPublicProducts(sample, "PINATA").map((p) => p.slug)).toEqual(["b"]);
+  });
+
+  it("aplica filtros y mantiene los productos sin stock al final", () => {
+    expect(filterPublicProducts(sample, { order: "price-desc" }).map((p) => p.slug)).toEqual(["a", "b"]);
+    expect(filterPublicProducts(sample, { availableOnly: true }).map((p) => p.slug)).toEqual(["a"]);
+    expect(filterPublicProducts(sample, { minPrice: 150, maxPrice: 250 }).map((p) => p.slug)).toEqual(["b"]);
   });
 
   it("calcula el margen", () => {

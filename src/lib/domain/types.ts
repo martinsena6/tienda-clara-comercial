@@ -37,8 +37,11 @@ export interface PublicProduct {
   categoryName: string;
   description: string;
   image: string;
+  images: string[];
   price: number;
   availability: Availability;
+  featured: boolean;
+  badge: string;
 }
 
 export type StockMovementType = "entrada" | "salida" | "ajuste";
