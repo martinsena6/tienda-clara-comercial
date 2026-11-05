@@ -26,6 +26,7 @@ import { Route as AuthenticatedAdminRentabilidadRouteImport } from './routes/_au
 import { Route as AuthenticatedAdminStockRouteImport } from './routes/_authenticated/admin.stock'
 import { Route as AuthenticatedAdminUsuariosRouteImport } from './routes/_authenticated/admin.usuarios'
 import { Route as AuthenticatedAdminVentasRouteImport } from './routes/_authenticated/admin.ventas'
+import { Route as CatalogoPedidoNumeroRouteImport } from './routes/catalogo.pedido.$numero'
 import { Route as CatalogoProductoSlugRouteImport } from './routes/catalogo.producto.$slug'
 
 const IndexRoute = IndexRouteImport.update({
@@ -120,6 +121,11 @@ const AuthenticatedAdminVentasRoute =
     path: '/ventas',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const CatalogoPedidoNumeroRoute = CatalogoPedidoNumeroRouteImport.update({
+  id: '/catalogo/pedido/$numero',
+  path: '/catalogo/pedido/$numero',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CatalogoProductoSlugRoute = CatalogoProductoSlugRouteImport.update({
   id: '/catalogo/producto/$slug',
   path: '/catalogo/producto/$slug',
@@ -142,6 +148,7 @@ export interface FileRoutesByFullPath {
   '/admin/stock': typeof AuthenticatedAdminStockRoute
   '/admin/usuarios': typeof AuthenticatedAdminUsuariosRoute
   '/admin/ventas': typeof AuthenticatedAdminVentasRoute
+  '/catalogo/pedido/$numero': typeof CatalogoPedidoNumeroRoute
   '/catalogo/producto/$slug': typeof CatalogoProductoSlugRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
 }
@@ -160,6 +167,7 @@ export interface FileRoutesByTo {
   '/admin/stock': typeof AuthenticatedAdminStockRoute
   '/admin/usuarios': typeof AuthenticatedAdminUsuariosRoute
   '/admin/ventas': typeof AuthenticatedAdminVentasRoute
+  '/catalogo/pedido/$numero': typeof CatalogoPedidoNumeroRoute
   '/catalogo/producto/$slug': typeof CatalogoProductoSlugRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
 }
@@ -181,6 +189,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/stock': typeof AuthenticatedAdminStockRoute
   '/_authenticated/admin/usuarios': typeof AuthenticatedAdminUsuariosRoute
   '/_authenticated/admin/ventas': typeof AuthenticatedAdminVentasRoute
+  '/catalogo/pedido/$numero': typeof CatalogoPedidoNumeroRoute
   '/catalogo/producto/$slug': typeof CatalogoProductoSlugRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
 }
@@ -202,6 +211,7 @@ export interface FileRouteTypes {
     | '/admin/stock'
     | '/admin/usuarios'
     | '/admin/ventas'
+    | '/catalogo/pedido/$numero'
     | '/catalogo/producto/$slug'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
@@ -220,6 +230,7 @@ export interface FileRouteTypes {
     | '/admin/stock'
     | '/admin/usuarios'
     | '/admin/ventas'
+    | '/catalogo/pedido/$numero'
     | '/catalogo/producto/$slug'
     | '/admin'
   id:
@@ -240,6 +251,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/stock'
     | '/_authenticated/admin/usuarios'
     | '/_authenticated/admin/ventas'
+    | '/catalogo/pedido/$numero'
     | '/catalogo/producto/$slug'
     | '/_authenticated/admin/'
   fileRoutesById: FileRoutesById
@@ -251,6 +263,7 @@ export interface RootRouteChildren {
   CatalogoCarritoRoute: typeof CatalogoCarritoRoute
   CatalogoCategoriasRoute: typeof CatalogoCategoriasRoute
   CatalogoProductosRoute: typeof CatalogoProductosRoute
+  CatalogoPedidoNumeroRoute: typeof CatalogoPedidoNumeroRoute
   CatalogoProductoSlugRoute: typeof CatalogoProductoSlugRoute
 }
 
@@ -375,6 +388,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminVentasRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/catalogo/pedido/$numero': {
+      id: '/catalogo/pedido/$numero'
+      path: '/catalogo/pedido/$numero'
+      fullPath: '/catalogo/pedido/$numero'
+      preLoaderRoute: typeof CatalogoPedidoNumeroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/catalogo/producto/$slug': {
       id: '/catalogo/producto/$slug'
       path: '/catalogo/producto/$slug'
@@ -432,6 +452,7 @@ const rootRouteChildren: RootRouteChildren = {
   CatalogoCarritoRoute: CatalogoCarritoRoute,
   CatalogoCategoriasRoute: CatalogoCategoriasRoute,
   CatalogoProductosRoute: CatalogoProductosRoute,
+  CatalogoPedidoNumeroRoute: CatalogoPedidoNumeroRoute,
   CatalogoProductoSlugRoute: CatalogoProductoSlugRoute,
 }
 export const routeTree = rootRouteImport
