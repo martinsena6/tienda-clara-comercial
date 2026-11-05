@@ -36,6 +36,7 @@ const groups: { label: string; items: Item[] }[] = [
     label: "Operaciones",
     items: [
       { title: "Ventas", url: "/admin/ventas", icon: ShoppingBag },
+      { title: "Venta en el local", url: "/admin/mostrador", icon: Store },
       { title: "Compras", url: "/admin/compras", icon: Truck, adminOnly: true },
       { title: "Gastos", url: "/admin/gastos", icon: Wallet, adminOnly: true },
       { title: "Rentabilidad", url: "/admin/rentabilidad", icon: BarChart3, adminOnly: true },
