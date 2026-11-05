@@ -125,7 +125,7 @@ function daysTo(date: string) {
   return Math.round((Date.UTC(y!, m! - 1, d!) - Date.UTC(ty!, tm! - 1, td!)) / 86400_000);
 }
 function ContactCell({ o }: { o: PanelOrder }) {
-  const a = (o.delivery_address ?? {}) as Record<string, string>;
+  const a = (o.delivery_address ?? {}) as { street?: string; city?: string; province?: string; postal_code?: string };
   const phone = o.customer_phone.replace(/\D/g, "");
   const wa = phone ? `https://wa.me/${phone.startsWith("54") ? phone : `549${phone}`}` : "";
   const n = o.event_date ? daysTo(o.event_date) : null;
