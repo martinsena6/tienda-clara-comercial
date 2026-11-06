@@ -22,9 +22,12 @@ import { Route as AuthenticatedAdminComprasRouteImport } from './routes/_authent
 import { Route as AuthenticatedAdminConfiguracionRouteImport } from './routes/_authenticated/admin.configuracion'
 import { Route as AuthenticatedAdminCostosRouteImport } from './routes/_authenticated/admin.costos'
 import { Route as AuthenticatedAdminGastosRouteImport } from './routes/_authenticated/admin.gastos'
+import { Route as AuthenticatedAdminInventarioRouteImport } from './routes/_authenticated/admin.inventario'
 import { Route as AuthenticatedAdminMostradorRouteImport } from './routes/_authenticated/admin.mostrador'
+import { Route as AuthenticatedAdminPreciosRouteImport } from './routes/_authenticated/admin.precios'
 import { Route as AuthenticatedAdminProductosRouteImport } from './routes/_authenticated/admin.productos'
 import { Route as AuthenticatedAdminRentabilidadRouteImport } from './routes/_authenticated/admin.rentabilidad'
+import { Route as AuthenticatedAdminReposicionRouteImport } from './routes/_authenticated/admin.reposicion'
 import { Route as AuthenticatedAdminStockRouteImport } from './routes/_authenticated/admin.stock'
 import { Route as AuthenticatedAdminUsuariosRouteImport } from './routes/_authenticated/admin.usuarios'
 import { Route as AuthenticatedAdminVentasRouteImport } from './routes/_authenticated/admin.ventas'
@@ -100,10 +103,22 @@ const AuthenticatedAdminGastosRoute =
     path: '/gastos',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminInventarioRoute =
+  AuthenticatedAdminInventarioRouteImport.update({
+    id: '/inventario',
+    path: '/inventario',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminMostradorRoute =
   AuthenticatedAdminMostradorRouteImport.update({
     id: '/mostrador',
     path: '/mostrador',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminPreciosRoute =
+  AuthenticatedAdminPreciosRouteImport.update({
+    id: '/precios',
+    path: '/precios',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminProductosRoute =
@@ -116,6 +131,12 @@ const AuthenticatedAdminRentabilidadRoute =
   AuthenticatedAdminRentabilidadRouteImport.update({
     id: '/rentabilidad',
     path: '/rentabilidad',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminReposicionRoute =
+  AuthenticatedAdminReposicionRouteImport.update({
+    id: '/reposicion',
+    path: '/reposicion',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminStockRoute = AuthenticatedAdminStockRouteImport.update({
@@ -158,9 +179,12 @@ export interface FileRoutesByFullPath {
   '/admin/configuracion': typeof AuthenticatedAdminConfiguracionRoute
   '/admin/costos': typeof AuthenticatedAdminCostosRoute
   '/admin/gastos': typeof AuthenticatedAdminGastosRoute
+  '/admin/inventario': typeof AuthenticatedAdminInventarioRoute
   '/admin/mostrador': typeof AuthenticatedAdminMostradorRoute
+  '/admin/precios': typeof AuthenticatedAdminPreciosRoute
   '/admin/productos': typeof AuthenticatedAdminProductosRoute
   '/admin/rentabilidad': typeof AuthenticatedAdminRentabilidadRoute
+  '/admin/reposicion': typeof AuthenticatedAdminReposicionRoute
   '/admin/stock': typeof AuthenticatedAdminStockRoute
   '/admin/usuarios': typeof AuthenticatedAdminUsuariosRoute
   '/admin/ventas': typeof AuthenticatedAdminVentasRoute
@@ -179,9 +203,12 @@ export interface FileRoutesByTo {
   '/admin/configuracion': typeof AuthenticatedAdminConfiguracionRoute
   '/admin/costos': typeof AuthenticatedAdminCostosRoute
   '/admin/gastos': typeof AuthenticatedAdminGastosRoute
+  '/admin/inventario': typeof AuthenticatedAdminInventarioRoute
   '/admin/mostrador': typeof AuthenticatedAdminMostradorRoute
+  '/admin/precios': typeof AuthenticatedAdminPreciosRoute
   '/admin/productos': typeof AuthenticatedAdminProductosRoute
   '/admin/rentabilidad': typeof AuthenticatedAdminRentabilidadRoute
+  '/admin/reposicion': typeof AuthenticatedAdminReposicionRoute
   '/admin/stock': typeof AuthenticatedAdminStockRoute
   '/admin/usuarios': typeof AuthenticatedAdminUsuariosRoute
   '/admin/ventas': typeof AuthenticatedAdminVentasRoute
@@ -203,9 +230,12 @@ export interface FileRoutesById {
   '/_authenticated/admin/configuracion': typeof AuthenticatedAdminConfiguracionRoute
   '/_authenticated/admin/costos': typeof AuthenticatedAdminCostosRoute
   '/_authenticated/admin/gastos': typeof AuthenticatedAdminGastosRoute
+  '/_authenticated/admin/inventario': typeof AuthenticatedAdminInventarioRoute
   '/_authenticated/admin/mostrador': typeof AuthenticatedAdminMostradorRoute
+  '/_authenticated/admin/precios': typeof AuthenticatedAdminPreciosRoute
   '/_authenticated/admin/productos': typeof AuthenticatedAdminProductosRoute
   '/_authenticated/admin/rentabilidad': typeof AuthenticatedAdminRentabilidadRoute
+  '/_authenticated/admin/reposicion': typeof AuthenticatedAdminReposicionRoute
   '/_authenticated/admin/stock': typeof AuthenticatedAdminStockRoute
   '/_authenticated/admin/usuarios': typeof AuthenticatedAdminUsuariosRoute
   '/_authenticated/admin/ventas': typeof AuthenticatedAdminVentasRoute
@@ -227,9 +257,12 @@ export interface FileRouteTypes {
     | '/admin/configuracion'
     | '/admin/costos'
     | '/admin/gastos'
+    | '/admin/inventario'
     | '/admin/mostrador'
+    | '/admin/precios'
     | '/admin/productos'
     | '/admin/rentabilidad'
+    | '/admin/reposicion'
     | '/admin/stock'
     | '/admin/usuarios'
     | '/admin/ventas'
@@ -248,9 +281,12 @@ export interface FileRouteTypes {
     | '/admin/configuracion'
     | '/admin/costos'
     | '/admin/gastos'
+    | '/admin/inventario'
     | '/admin/mostrador'
+    | '/admin/precios'
     | '/admin/productos'
     | '/admin/rentabilidad'
+    | '/admin/reposicion'
     | '/admin/stock'
     | '/admin/usuarios'
     | '/admin/ventas'
@@ -271,9 +307,12 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/configuracion'
     | '/_authenticated/admin/costos'
     | '/_authenticated/admin/gastos'
+    | '/_authenticated/admin/inventario'
     | '/_authenticated/admin/mostrador'
+    | '/_authenticated/admin/precios'
     | '/_authenticated/admin/productos'
     | '/_authenticated/admin/rentabilidad'
+    | '/_authenticated/admin/reposicion'
     | '/_authenticated/admin/stock'
     | '/_authenticated/admin/usuarios'
     | '/_authenticated/admin/ventas'
@@ -386,11 +425,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminGastosRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/inventario': {
+      id: '/_authenticated/admin/inventario'
+      path: '/inventario'
+      fullPath: '/admin/inventario'
+      preLoaderRoute: typeof AuthenticatedAdminInventarioRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/mostrador': {
       id: '/_authenticated/admin/mostrador'
       path: '/mostrador'
       fullPath: '/admin/mostrador'
       preLoaderRoute: typeof AuthenticatedAdminMostradorRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/precios': {
+      id: '/_authenticated/admin/precios'
+      path: '/precios'
+      fullPath: '/admin/precios'
+      preLoaderRoute: typeof AuthenticatedAdminPreciosRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/productos': {
@@ -405,6 +458,13 @@ declare module '@tanstack/react-router' {
       path: '/rentabilidad'
       fullPath: '/admin/rentabilidad'
       preLoaderRoute: typeof AuthenticatedAdminRentabilidadRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/reposicion': {
+      id: '/_authenticated/admin/reposicion'
+      path: '/reposicion'
+      fullPath: '/admin/reposicion'
+      preLoaderRoute: typeof AuthenticatedAdminReposicionRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/stock': {
@@ -451,9 +511,12 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminConfiguracionRoute: typeof AuthenticatedAdminConfiguracionRoute
   AuthenticatedAdminCostosRoute: typeof AuthenticatedAdminCostosRoute
   AuthenticatedAdminGastosRoute: typeof AuthenticatedAdminGastosRoute
+  AuthenticatedAdminInventarioRoute: typeof AuthenticatedAdminInventarioRoute
   AuthenticatedAdminMostradorRoute: typeof AuthenticatedAdminMostradorRoute
+  AuthenticatedAdminPreciosRoute: typeof AuthenticatedAdminPreciosRoute
   AuthenticatedAdminProductosRoute: typeof AuthenticatedAdminProductosRoute
   AuthenticatedAdminRentabilidadRoute: typeof AuthenticatedAdminRentabilidadRoute
+  AuthenticatedAdminReposicionRoute: typeof AuthenticatedAdminReposicionRoute
   AuthenticatedAdminStockRoute: typeof AuthenticatedAdminStockRoute
   AuthenticatedAdminUsuariosRoute: typeof AuthenticatedAdminUsuariosRoute
   AuthenticatedAdminVentasRoute: typeof AuthenticatedAdminVentasRoute
@@ -466,9 +529,12 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminConfiguracionRoute: AuthenticatedAdminConfiguracionRoute,
   AuthenticatedAdminCostosRoute: AuthenticatedAdminCostosRoute,
   AuthenticatedAdminGastosRoute: AuthenticatedAdminGastosRoute,
+  AuthenticatedAdminInventarioRoute: AuthenticatedAdminInventarioRoute,
   AuthenticatedAdminMostradorRoute: AuthenticatedAdminMostradorRoute,
+  AuthenticatedAdminPreciosRoute: AuthenticatedAdminPreciosRoute,
   AuthenticatedAdminProductosRoute: AuthenticatedAdminProductosRoute,
   AuthenticatedAdminRentabilidadRoute: AuthenticatedAdminRentabilidadRoute,
+  AuthenticatedAdminReposicionRoute: AuthenticatedAdminReposicionRoute,
   AuthenticatedAdminStockRoute: AuthenticatedAdminStockRoute,
   AuthenticatedAdminUsuariosRoute: AuthenticatedAdminUsuariosRoute,
   AuthenticatedAdminVentasRoute: AuthenticatedAdminVentasRoute,

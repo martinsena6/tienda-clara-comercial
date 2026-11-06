@@ -2,9 +2,12 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   BarChart3,
   Boxes,
+  Calculator,
+  ClipboardList,
   LayoutDashboard,
   Images,
   Package,
+  PackageSearch,
   Settings,
   ShoppingBag,
   Store,
@@ -43,7 +46,10 @@ const groups: { label: string; items: Item[] }[] = [
       { title: "Productos", url: "/admin/productos", icon: Package },
       { title: "Banners", url: "/admin/banners", icon: Images, adminOnly: true },
       { title: "Stock", url: "/admin/stock", icon: Boxes },
+      { title: "Conteo físico", url: "/admin/inventario", icon: ClipboardList, adminOnly: true },
+      { title: "Reposición", url: "/admin/reposicion", icon: PackageSearch, adminOnly: true },
       { title: "Costos", url: "/admin/costos", icon: Tags, adminOnly: true },
+      { title: "Precios", url: "/admin/precios", icon: Calculator, adminOnly: true },
     ],
   },
   {

@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertTriangle, Clock, DollarSign, Package } from "lucide-react";
+import { AlertTriangle, CalendarDays, Clock, DollarSign, Package } from "lucide-react";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { StatCard } from "@/components/admin/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { getAvailability } from "@/lib/domain/catalog";
-import { usePanelOrders, usePanelProducts } from "@/lib/data";
+import { todayAR, usePanelOrders, usePanelProducts } from "@/lib/data";
 import { ReportPanel } from "@/components/admin/ReportPanel";
 import { formatDate, formatPrice } from "@/lib/format";
 
@@ -25,6 +25,18 @@ function Dashboard() {
   const { data: products, isAdmin } = usePanelProducts();
   const confirmed = orders.filter((o) => o.status === "confirmado");
   const pending = orders.filter((o) => o.status === "pendiente");
+  const today = todayAR();
+  const throughNextWeek = todayAR(7);
+  const upcomingEvents = isAdmin
+    ? orders
+        .filter((order) =>
+          (order.status === "pendiente" || order.status === "confirmado") &&
+          order.event_date !== null &&
+          order.event_date >= today &&
+          order.event_date <= throughNextWeek,
+        )
+        .sort((a, b) => (a.event_date ?? "").localeCompare(b.event_date ?? ""))
+    : [];
   const low = products.filter(
     (p) => p.active && getAvailability(p.stock, p.min_stock) !== "disponible",
   );
@@ -63,6 +75,29 @@ function Dashboard() {
           icon={AlertTriangle}
         />
       </div>
+      {isAdmin && (
+        <section className="mt-6 rounded-xl border bg-card p-5 shadow-soft">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 font-semibold"><CalendarDays className="size-4" />Eventos de los próximos 7 días</h2>
+            <Link to="/admin/ventas" className="text-sm text-primary">Ver ventas</Link>
+          </div>
+          {upcomingEvents.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No hay eventos próximos.</p>
+          ) : (
+            <ul className="divide-y">
+              {upcomingEvents.map((order) => (
+                <li key={order.id} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
+                  <div>
+                    <div className="font-medium">{order.customer_name || "Cliente"} · Pedido #{order.number}</div>
+                    <div className="text-xs text-muted-foreground">{formatDate(order.event_date!)} · {order.delivery_method === "envio" ? "Envío" : "Retiro"}</div>
+                  </div>
+                  <StatusBadge tone={order.status === "confirmado" ? "success" : "warning"}>{order.status === "confirmado" ? "Confirmado" : "Pendiente"}</StatusBadge>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <section className="rounded-xl border bg-card p-5 shadow-soft">
           <div className="mb-3 flex items-center justify-between">

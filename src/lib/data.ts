@@ -213,6 +213,77 @@ export const adminProductsQuery = queryOptions({
 });
 export type AdminProduct = Awaited<ReturnType<typeof adminProductsQuery.queryFn & {}>>[number];
 
+export const priceHistoryQuery = queryOptions({
+  queryKey: ["price-history"],
+  queryFn: async () => {
+    const { data, error } = await supabase
+      .from("price_history")
+      .select("id, product_id, old_price, new_price, old_cost, new_cost, changed_at, batch_id, reason, products(name)")
+      .order("changed_at", { ascending: false })
+      .limit(1000);
+    if (error) throw error;
+    return (data ?? []).map((row) => ({
+      ...row,
+      productName: (row.products as { name: string } | null)?.name ?? "Producto",
+      old_price: row.old_price == null ? null : Number(row.old_price),
+      new_price: row.new_price == null ? null : Number(row.new_price),
+    }));
+  },
+});
+
+export async function applyPriceChanges(
+  changes: { product_id: string; new_price: number }[],
+  reason: string,
+) {
+  const batches: string[] = [];
+  for (let offset = 0; offset < changes.length; offset += 500) {
+    const { data, error } = await supabase.rpc("apply_price_changes", {
+      p_changes: changes.slice(offset, offset + 500),
+      p_reason: reason.slice(0, 200),
+    });
+    if (error) {
+      const batch = Math.floor(offset / 500) + 1;
+      throw new Error(
+        batches.length
+          ? `Falló el lote ${batch}; ya se aplicaron ${batches.length} lotes anteriores. ${error.message}`
+          : error.message,
+      );
+    }
+    if (data) batches.push(data);
+  }
+  return batches;
+}
+
+export async function undoPriceBatch(batchId: string) {
+  const { data, error } = await supabase.rpc("undo_price_batch", { p_batch: batchId });
+  if (error) throw error;
+  return data ?? 0;
+}
+
+export const replenishmentQuery = queryOptions({
+  queryKey: ["replenishment-suggestions", 30, 21],
+  queryFn: async () => {
+    const { data, error } = await supabase.rpc("replenishment_suggestions", {
+      p_days: 30,
+      p_cover_days: 21,
+    });
+    if (error) throw error;
+    return data ?? [];
+  },
+});
+
+export async function applyStockCount(
+  counts: { product_id: string; counted: number }[],
+  reason: string,
+) {
+  const { data, error } = await supabase.rpc("apply_stock_count", {
+    p_counts: counts,
+    p_reason: reason,
+  });
+  if (error) throw error;
+  return data ?? 0;
+}
+
 export const staffProductsQuery = queryOptions({
   queryKey: ["staff-products"],
   queryFn: async () => {

@@ -280,6 +280,7 @@ export type Database = {
       }
       price_history: {
         Row: {
+          batch_id: string | null
           changed_at: string
           changed_by: string | null
           id: string
@@ -288,8 +289,10 @@ export type Database = {
           old_cost: number | null
           old_price: number | null
           product_id: string
+          reason: string
         }
         Insert: {
+          batch_id?: string | null
           changed_at?: string
           changed_by?: string | null
           id?: string
@@ -298,8 +301,10 @@ export type Database = {
           old_cost?: number | null
           old_price?: number | null
           product_id: string
+          reason?: string
         }
         Update: {
+          batch_id?: string | null
           changed_at?: string
           changed_by?: string | null
           id?: string
@@ -308,6 +313,7 @@ export type Database = {
           old_cost?: number | null
           old_price?: number | null
           product_id?: string
+          reason?: string
         }
         Relationships: [
           {
@@ -704,6 +710,14 @@ export type Database = {
         Returns: undefined
       }
       apply_costs: { Args: { p_rows: Json }; Returns: number }
+      apply_price_changes: {
+        Args: { p_changes: Json; p_reason?: string }
+        Returns: string
+      }
+      apply_stock_count: {
+        Args: { p_counts: Json; p_reason?: string }
+        Returns: number
+      }
       business_report: { Args: { p_from: string; p_to: string }; Returns: Json }
       cancel_order: { Args: { p_order_id: string }; Returns: undefined }
       confirm_order: {
@@ -784,10 +798,31 @@ export type Database = {
           total: number
         }[]
       }
+      replenishment_suggestions: {
+        Args: { p_cover_days?: number; p_days?: number }
+        Returns: {
+          category: string
+          cost: number
+          dias_cobertura: number | null
+          min_stock: number
+          name: string
+          product_id: string
+          stock: number
+          sugerido: number
+          supplier: string | null
+          unidades_vendidas: number
+          venta_diaria: number
+        }[]
+      }
+      round_price: {
+        Args: { p_step?: number; p_value: number }
+        Returns: number
+      }
       set_user_role: {
         Args: { p_role: string; p_user_id: string }
         Returns: undefined
       }
+      undo_price_batch: { Args: { p_batch: string }; Returns: number }
       update_order_items: {
         Args: { p_items: Json; p_order_id: string }
         Returns: number

@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,10 @@ import { formatDate, formatPrice } from "@/lib/format";
 import { requireAdminRoute } from "@/lib/auth";
 
 export const Route = createFileRoute("/_authenticated/admin/compras")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    ...(typeof search["proveedor"] === "string" ? { proveedor: search["proveedor"] } : {}),
+    ...(typeof search["items"] === "string" ? { items: search["items"] } : {}),
+  }),
   beforeLoad: requireAdminRoute,
   head: () => ({
     meta: [
@@ -50,12 +54,17 @@ interface Line {
 }
 
 const EMPTY_PRODUCTS: AdminProduct[] = [];
+const EMPTY_SUPPLIERS: Awaited<ReturnType<typeof suppliersQuery.queryFn & {}>> = [];
 
 function Compras() {
   const qc = useQueryClient();
+  const navigate = useNavigate({ from: "/admin/compras" });
+  const prefill = Route.useSearch();
   const rows = useQuery(purchasesQuery).data ?? [];
-  const suppliers = useQuery(suppliersQuery).data ?? [];
-  const products = useQuery(adminProductsQuery).data ?? EMPTY_PRODUCTS;
+  const suppliersResult = useQuery(suppliersQuery);
+  const productsResult = useQuery(adminProductsQuery);
+  const suppliers = suppliersResult.data ?? EMPTY_SUPPLIERS;
+  const products = productsResult.data ?? EMPTY_PRODUCTS;
   const [open, setOpen] = useState<string | null>(null);
   const [date, setDate] = useState(todayAR());
   const [supplierId, setSupplierId] = useState("");
@@ -70,6 +79,40 @@ function Compras() {
   const [search, setSearch] = useState("");
   const [lines, setLines] = useState<Line[]>([]);
   const [busy, setBusy] = useState(false);
+  const appliedPrefill = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!prefill.items || productsResult.isLoading || suppliersResult.isLoading) return;
+    if (appliedPrefill.current === prefill.items) return;
+    appliedPrefill.current = prefill.items;
+    try {
+      const parsed: unknown = JSON.parse(prefill.items);
+      if (!Array.isArray(parsed)) throw new Error("Los productos preseleccionados no son válidos");
+      const nextLines = parsed.flatMap((item): Line[] => {
+        if (!item || typeof item !== "object") return [];
+        const row = item as Record<string, unknown>;
+        if (typeof row["product_id"] !== "string" || typeof row["quantity"] !== "number" ||
+          !Number.isInteger(row["quantity"]) || row["quantity"] <= 0) return [];
+        const product = products.find((candidate) => candidate.id === row["product_id"]);
+        return product ? [{
+          product_id: product.id,
+          name: product.name,
+          quantity: String(row["quantity"]),
+          unit_cost: product.cost > 0 ? String(product.cost) : "",
+        }] : [];
+      });
+      if (nextLines.length === 0) throw new Error("No se encontraron productos válidos para la compra");
+      setLines(nextLines);
+      const supplier = suppliers.find((candidate) => normalizeName(candidate.name) === normalizeName(prefill.proveedor ?? ""));
+      setSupplierId(supplier?.id ?? "");
+      setNotes("Pedido de reposición");
+      toast.success(`${nextLines.length} productos cargados en Nueva compra`);
+      void navigate({ search: {} });
+    } catch (error) {
+      toast.error(errorMessage(error));
+      void navigate({ search: {} });
+    }
+  }, [prefill.items, prefill.proveedor, products, productsResult.isLoading, suppliers, suppliersResult.isLoading, navigate]);
 
   const matches = useMemo(() => {
     const q = normalizeName(search);
