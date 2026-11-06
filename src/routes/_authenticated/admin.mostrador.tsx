@@ -143,7 +143,7 @@ function Mostrador() {
                         {
                           product_id: product.id,
                           name: product.name,
-                          stock: product.stock,
+                          stock: product.stock_disponible,
                           defaultPrice: product.price,
                           quantity: "1",
                           unit_price: "",

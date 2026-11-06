@@ -195,15 +195,22 @@ export function useMyRole() {
 export const adminProductsQuery = queryOptions({
   queryKey: ["admin-products"],
   queryFn: async () => {
-    const { data, error } = await supabase
-      .from("products")
-      .select("*, categories(name)")
-      .order("name");
-    if (error) throw error;
-    return data.map((p) => ({
+    const [productsResult, stockResult] = await Promise.all([
+      supabase.from("products").select("*, categories(name)").order("name"),
+      supabase.from("products_staff").select("id, stock_disponible"),
+    ]);
+    if (productsResult.error) throw productsResult.error;
+    if (stockResult.error) throw stockResult.error;
+    const effectiveStockById = new Map(
+      (stockResult.data ?? [])
+        .filter((row) => row.id !== null)
+        .map((row) => [row.id!, row.stock_disponible ?? 0]),
+    );
+    return productsResult.data.map((p) => ({
       ...p,
       price: Number(p.price),
       cost: Number(p.cost),
+      stock_disponible: effectiveStockById.get(p.id) ?? p.stock,
       image: resolveImage(p.image_url),
       images: imageUrlList(p.image_urls),
       featured: p.featured ?? false,
@@ -307,11 +314,77 @@ export const staffProductsQuery = queryOptions({
       active: p.active ?? false,
       featured: p.featured ?? false,
       badge: p.badge ?? "",
+      stock_disponible: p.stock_disponible ?? p.stock ?? 0,
       categories: p.categories as { name: string } | null,
     }));
   },
 });
 export type StaffProduct = Awaited<ReturnType<typeof staffProductsQuery.queryFn & {}>>[number];
+
+export const comboItemsQuery = queryOptions({
+  queryKey: ["combo-items"],
+  queryFn: async () => {
+    const { data, error } = await supabase
+      .from("combo_items")
+      .select("combo_id, component_id, quantity")
+      .order("combo_id")
+      .order("component_id");
+    if (error) throw error;
+    return data ?? [];
+  },
+});
+
+export async function saveComboRecipe(
+  comboId: string,
+  items: { component_id: string; quantity: number }[],
+) {
+  const componentIds = items.map((item) => item.component_id);
+  if (
+    items.some((item) => !Number.isInteger(item.quantity) || item.quantity <= 0) ||
+    new Set(componentIds).size !== componentIds.length ||
+    componentIds.includes(comboId)
+  ) {
+    throw new Error("La receta contiene componentes o cantidades inválidas");
+  }
+
+  const { data: existing, error: existingError } = await supabase
+    .from("combo_items")
+    .select("component_id")
+    .eq("combo_id", comboId);
+  if (existingError) throw existingError;
+
+  if (items.length) {
+    const { error } = await supabase
+      .from("combo_items")
+      .upsert(
+        items.map((item) => ({ combo_id: comboId, ...item })),
+        { onConflict: "combo_id,component_id" },
+      );
+    if (error) throw error;
+  }
+
+  const removedIds = (existing ?? [])
+    .map((item) => item.component_id)
+    .filter((id) => !componentIds.includes(id));
+  if (removedIds.length) {
+    const { error } = await supabase
+      .from("combo_items")
+      .delete()
+      .eq("combo_id", comboId)
+      .in("component_id", removedIds);
+    if (error) throw error;
+  }
+}
+
+export async function copyComboRecipe(from: string, to: string, factor: number) {
+  const { data, error } = await supabase.rpc("copy_combo_recipe", {
+    p_from: from,
+    p_to: to,
+    p_factor: factor,
+  });
+  if (error) throw error;
+  return data ?? 0;
+}
 
 export interface OrderItemRow {
   product_id?: string;
@@ -934,6 +1007,7 @@ export interface PanelProduct {
   images: string[];
   price: number;
   stock: number;
+  stock_disponible: number;
   min_stock: number;
   active: boolean;
   categories: { name: string } | null;

@@ -43,6 +43,13 @@
       "when": 1794000000000,
       "tag": "0005_precios_conteo_reposicion",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794001000000,
+      "tag": "0006_combos_con_stock_automatico",
+      "breakpoints": true
     }
   ]
 }

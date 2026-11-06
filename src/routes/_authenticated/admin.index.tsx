@@ -38,7 +38,7 @@ function Dashboard() {
         .sort((a, b) => (a.event_date ?? "").localeCompare(b.event_date ?? ""))
     : [];
   const low = products.filter(
-    (p) => p.active && getAvailability(p.stock, p.min_stock) !== "disponible",
+    (p) => p.active && getAvailability(p.stock_disponible, p.min_stock) !== "disponible",
   );
   return (
     <>
@@ -138,8 +138,8 @@ function Dashboard() {
             {low.slice(0, 8).map((p) => (
               <li key={p.id} className="flex items-center justify-between py-3 text-sm">
                 <span className="font-medium">{p.name}</span>
-                <StatusBadge tone={p.stock <= 0 ? "danger" : "warning"}>
-                  {p.stock <= 0 ? "Agotado" : `Quedan ${p.stock}`}
+                <StatusBadge tone={p.stock_disponible <= 0 ? "danger" : "warning"}>
+                  {p.stock_disponible <= 0 ? "Agotado" : `Quedan ${p.stock_disponible}`}
                 </StatusBadge>
               </li>
             ))}

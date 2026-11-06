@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Camera, Check, Pencil, Plus, Upload } from "lucide-react";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import { AvailabilityBadge } from "@/components/shared/AvailabilityBadge";
 import { ProductImage } from "@/components/catalog/ProductImage";
 import { getAvailability, marginPct } from "@/lib/domain/catalog";
 import {
-  categoriesQuery, createProduct, deleteProductImage, errorMessage, linkProductPhotos, normalizeName, setProductActive, updateProductInternals, updateProductPhoto, uploadBulkProductImages, usePanelProducts, type PanelProduct, slugify, updateProduct, uploadProductImage,
+  adminProductsQuery, categoriesQuery, comboItemsQuery, copyComboRecipe, createProduct, deleteProductImage, errorMessage, linkProductPhotos, normalizeName, saveComboRecipe, setProductActive, updateProductInternals, updateProductPhoto, uploadBulkProductImages, usePanelProducts, type PanelProduct, slugify, updateProduct, uploadProductImage,
   type AdminProduct,
 } from "@/lib/data";
 import { formatPrice } from "@/lib/format";
@@ -103,6 +103,7 @@ function ProductForm({ product, onDone }: { product: AdminProduct | null; onDone
 
   const shown = image ? (image.startsWith("asset:") ? product?.image : image) : "";
   return (
+    <div>
     <form onSubmit={submit} className="space-y-4 p-4">
       <FormField label="Fotos" htmlFor="photo" hint="Arrastrá varias imágenes; se convierten a WebP de hasta 1200 px.">
         <div
@@ -137,8 +138,251 @@ function ProductForm({ product, onDone }: { product: AdminProduct | null; onDone
       <FormField label="Proveedor" htmlFor="supplier" hint="Interno, no se publica"><Input id="supplier" name="supplier" defaultValue={product?.supplier ?? ""} /></FormField>
       <FormField label="Stock mínimo" htmlFor="min_stock" hint="El stock se carga desde la sección Stock" error={errors["min_stock"]}><Input id="min_stock" name="min_stock" type="number" min={0} defaultValue={product?.min_stock ?? 0} /></FormField>
       <FormField label="Descripción" htmlFor="description"><Textarea id="description" name="description" rows={3} defaultValue={product?.description} /></FormField>
+      {product ? (
+        <ComboRecipeEditor product={product} />
+      ) : (
+        <p className="rounded-md border p-3 text-sm text-muted-foreground">
+          Guardá el producto para poder configurar su receta de combo.
+        </p>
+      )}
       <Button type="submit" className="w-full" disabled={busy}>{busy ? "Guardando…" : "Guardar producto"}</Button>
     </form>
+    </div>
+  );
+}
+
+interface RecipeDraft {
+  component_id: string;
+  quantity: string;
+}
+
+function ComboRecipeEditor({ product }: { product: AdminProduct }) {
+  const queryClient = useQueryClient();
+  const productsQuery = useQuery(adminProductsQuery);
+  const recipeQuery = useQuery(comboItemsQuery);
+  const products = productsQuery.data ?? [];
+  const recipe = useMemo(
+    () => (recipeQuery.data ?? []).filter((item) => item.combo_id === product.id),
+    [product.id, recipeQuery.data],
+  );
+  const recipeComboIds = useMemo(
+    () => new Set((recipeQuery.data ?? []).map((item) => item.combo_id)),
+    [recipeQuery.data],
+  );
+  const combos = products.filter(
+    (item) =>
+      item.id !== product.id &&
+      recipeComboIds.has(item.id) &&
+      !(recipeQuery.data ?? []).some(
+        (recipeItem) => recipeItem.combo_id === item.id && recipeComboIds.has(recipeItem.component_id),
+      ),
+  );
+  const [rows, setRows] = useState<RecipeDraft[]>([]);
+  const [copyFrom, setCopyFrom] = useState("");
+  const [factor, setFactor] = useState("1");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setRows(recipe.map((item) => ({
+      component_id: item.component_id,
+      quantity: String(item.quantity),
+    })));
+  }, [recipe]);
+
+  const save = async () => {
+    const items = rows.map((row) => ({
+      component_id: row.component_id,
+      quantity: Number(row.quantity),
+    }));
+    if (
+      items.some((item) => !item.component_id || !Number.isInteger(item.quantity) || item.quantity < 1) ||
+      new Set(items.map((item) => item.component_id)).size !== items.length ||
+      items.some(
+        (item) => item.component_id === product.id || recipeComboIds.has(item.component_id),
+      )
+    ) {
+      toast.error("Elegí productos simples, distintos y cantidades enteras mayores a cero");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      await saveComboRecipe(product.id, items);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["combo-items"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-products"] }),
+        queryClient.invalidateQueries({ queryKey: ["staff-products"] }),
+        queryClient.invalidateQueries({ queryKey: ["public-products"] }),
+      ]);
+      toast.success("Receta del combo guardada");
+    } catch (error) {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["combo-items"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-products"] }),
+      ]);
+      toast.error(errorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const copy = async () => {
+    const parsedFactor = Number(factor.replace(",", "."));
+    if (!copyFrom || !Number.isFinite(parsedFactor) || parsedFactor <= 0) {
+      toast.error("Elegí un combo de origen e indicá un factor mayor a cero");
+      return;
+    }
+    if (rows.length && !window.confirm("Copiar reemplazará la receta actual de este producto. ¿Continuar?")) {
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const count = await copyComboRecipe(copyFrom, product.id, parsedFactor);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["combo-items"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-products"] }),
+        queryClient.invalidateQueries({ queryKey: ["staff-products"] }),
+        queryClient.invalidateQueries({ queryKey: ["public-products"] }),
+      ]);
+      toast.success(`Receta copiada: ${count} componentes`);
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="space-y-3 rounded-lg border p-3">
+      <div>
+        <h3 className="font-medium">Receta del combo</h3>
+        <p className="text-xs text-muted-foreground">
+          La disponibilidad y el costo se calculan con las cantidades de sus componentes. Sin receta, se usa el stock manual.
+        </p>
+      </div>
+      {(productsQuery.error || recipeQuery.error) && (
+        <p role="alert" className="text-sm text-destructive">
+          No se pudo cargar la receta: {errorMessage(productsQuery.error ?? recipeQuery.error)}
+        </p>
+      )}
+      {recipeQuery.isLoading || productsQuery.isLoading ? (
+        <p className="text-sm text-muted-foreground">Cargando receta…</p>
+      ) : !productsQuery.error && !recipeQuery.error ? (
+        <>
+          {rows.length === 0 && (
+            <p className="text-sm text-muted-foreground">Este producto no tiene receta y conserva stock manual.</p>
+          )}
+          <div className="space-y-2">
+            {rows.map((row, index) => {
+              const selectedComponents = new Set(rows.map((item) => item.component_id).filter(Boolean));
+              return (
+                <div key={`${product.id}-${index}`} className="grid grid-cols-[minmax(0,1fr)_5rem_auto] gap-2">
+                  <select
+                    aria-label={`Componente ${index + 1}`}
+                    value={row.component_id}
+                    onChange={(event) =>
+                      setRows((current) =>
+                        current.map((item, rowIndex) =>
+                          rowIndex === index ? { ...item, component_id: event.target.value } : item,
+                        ),
+                      )
+                    }
+                    className="h-9 min-w-0 rounded-md border bg-background px-2 text-sm"
+                  >
+                    <option value="">Elegir componente…</option>
+                    {products
+                      .filter((item) =>
+                        item.id !== product.id &&
+                        (item.id === row.component_id ||
+                          (!selectedComponents.has(item.id) && !recipeComboIds.has(item.id))),
+                      )
+                      .map((item) => (
+                        <option key={item.id} value={item.id}>{item.name}</option>
+                      ))}
+                  </select>
+                  <Input
+                    aria-label={`Cantidad de ${products.find((item) => item.id === row.component_id)?.name ?? "componente"}`}
+                    type="number"
+                    min={1}
+                    step={1}
+                    disabled={busy}
+                    value={row.quantity}
+                    onChange={(event) =>
+                      setRows((current) =>
+                        current.map((item, rowIndex) =>
+                          rowIndex === index ? { ...item, quantity: event.target.value } : item,
+                        ),
+                      )
+                    }
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={busy}
+                    aria-label="Quitar componente"
+                    onClick={() => setRows((current) => current.filter((_, rowIndex) => rowIndex !== index))}
+                  >
+                    Quitar
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={busy || !!productsQuery.error || !!recipeQuery.error}
+              onClick={() => setRows((current) => [...current, { component_id: "", quantity: "1" }])}
+            >
+              Agregar componente
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={busy || !!productsQuery.error || !!recipeQuery.error}
+              onClick={save}
+            >
+              {busy ? "Guardando…" : "Guardar receta"}
+            </Button>
+          </div>
+          <div className="space-y-2 border-t pt-3">
+            <h4 className="text-sm font-medium">Copiar receta ×N desde otro combo</h4>
+            {combos.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Todavía no hay otros combos con receta guardada.</p>
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_6rem_auto]">
+                <select
+                  aria-label="Combo de origen"
+                  value={copyFrom}
+                  disabled={busy}
+                  onChange={(event) => setCopyFrom(event.target.value)}
+                  className="h-9 min-w-0 rounded-md border bg-background px-2 text-sm"
+                >
+                  <option value="">Elegir combo de origen…</option>
+                  {combos.map((combo) => <option key={combo.id} value={combo.id}>{combo.name}</option>)}
+                </select>
+                <Input
+                  aria-label="Factor de copia"
+                  type="number"
+                  min={0.01}
+                  step="any"
+                  disabled={busy}
+                  value={factor}
+                  onChange={(event) => setFactor(event.target.value)}
+                />
+                <Button type="button" size="sm" variant="outline" disabled={busy} onClick={copy}>
+                  Copiar receta
+                </Button>
+              </div>
+            )}
+          </div>
+        </>
+      ) : null}
+    </section>
   );
 }
 
@@ -310,7 +554,7 @@ function Productos() {
               { header: "Costo", cell: (p: PanelProduct) => <CostCell key={`${p.id}-${p.cost}`} p={p} />, className: "text-right", hideOnMobile: true },
               { header: "Margen", cell: (p: PanelProduct) => (p.cost ?? 0) > 0 ? `${marginPct(p.price, p.cost ?? 0)}%` : <span className="text-muted-foreground">—</span>, className: "text-right", hideOnMobile: true },
             ] : []),
-            { header: "Disponibilidad", cell: (p) => <AvailabilityBadge value={getAvailability(p.stock, p.min_stock)} />, hideOnMobile: true },
+            { header: "Disponibilidad", cell: (p) => <AvailabilityBadge value={getAvailability(p.stock_disponible, p.min_stock)} />, hideOnMobile: true },
             { header: "Visible en la tienda", cell: (p) => <Switch checked={p.active} disabled={!isAdmin} aria-label={`Visible en la tienda: ${p.name}`} onCheckedChange={(v) => toggle(p, v)} /> },
             ...(isAdmin ? [{ header: "Fotos", cell: (p: PanelProduct) => <ProductPhotoButton product={p} /> },
               { header: "Editar", cell: (p: PanelProduct) => (

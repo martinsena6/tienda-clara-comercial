@@ -11,6 +11,7 @@ import {
   adminProductsQuery,
   applyStockCount,
   categoriesQuery,
+  comboItemsQuery,
   errorMessage,
   normalizeName,
   todayAR,
@@ -36,7 +37,15 @@ function Inventario() {
   const queryClient = useQueryClient();
   const productsQuery = useQuery(adminProductsQuery);
   const categoriesQueryResult = useQuery(categoriesQuery);
-  const products = productsQuery.data ?? EMPTY_PRODUCTS;
+  const comboItemsResult = useQuery(comboItemsQuery);
+  const recipeComboIds = useMemo(
+    () => new Set((comboItemsResult.data ?? []).map((item) => item.combo_id)),
+    [comboItemsResult.data],
+  );
+  const products = useMemo(
+    () => (productsQuery.data ?? EMPTY_PRODUCTS).filter((product) => !recipeComboIds.has(product.id)),
+    [productsQuery.data, recipeComboIds],
+  );
   const categories = categoriesQueryResult.data ?? [];
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
@@ -76,6 +85,7 @@ function Inventario() {
       );
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["admin-products"] }),
+        queryClient.invalidateQueries({ queryKey: ["combo-items"] }),
         queryClient.invalidateQueries({ queryKey: ["movements"] }),
         queryClient.invalidateQueries({ queryKey: ["staff-products"] }),
         queryClient.invalidateQueries({ queryKey: ["public-products"] }),
@@ -104,6 +114,14 @@ function Inventario() {
           {errorMessage(categoriesQueryResult.error)}
         </p>
       )}
+      {comboItemsResult.error && (
+        <p role="alert" className="mb-3 text-sm text-destructive">
+          No se pudo cargar qué combos tienen receta: {errorMessage(comboItemsResult.error)}
+        </p>
+      )}
+      <p className="mb-3 text-sm text-muted-foreground">
+        Los combos con receta calculan su disponibilidad; ajustá las existencias de sus componentes.
+      </p>
       <div className="mb-4 flex flex-wrap gap-2">
         <Input
           placeholder="Buscar producto…"
@@ -162,7 +180,7 @@ function Inventario() {
         <p className="text-sm text-muted-foreground">
           Se registrará el motivo «Conteo físico {todayAR().split("-").reverse().join("/")}».
         </p>
-        <Button onClick={apply} disabled={busy || invalid || changes.length === 0}>
+        <Button onClick={apply} disabled={busy || invalid || changes.length === 0 || !!comboItemsResult.error}>
           {busy ? "Aplicando…" : `Aplicar ${changes.length} cambios`}
         </Button>
       </div>

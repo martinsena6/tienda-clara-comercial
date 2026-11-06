@@ -185,6 +185,39 @@ export type Database = {
         }
         Relationships: []
       }
+      combo_items: {
+        Row: {
+          combo_id: string
+          component_id: string
+          quantity: number
+        }
+        Insert: {
+          combo_id: string
+          component_id: string
+          quantity: number
+        }
+        Update: {
+          combo_id?: string
+          component_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "combo_items_combo_id_fkey"
+            columns: ["combo_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "combo_items_component_id_fkey"
+            columns: ["component_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expenses: {
         Row: {
           amount: number
@@ -652,6 +685,7 @@ export type Database = {
           price: number | null
           slug: string | null
           stock: number | null
+          stock_disponible: number | null
           updated_at: string | null
         }
         Insert: {
@@ -669,6 +703,7 @@ export type Database = {
           price?: number | null
           slug?: string | null
           stock?: number | null
+          stock_disponible?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -686,6 +721,7 @@ export type Database = {
           price?: number | null
           slug?: string | null
           stock?: number | null
+          stock_disponible?: number | null
           updated_at?: string | null
         }
         Relationships: [
@@ -710,6 +746,15 @@ export type Database = {
         Returns: undefined
       }
       apply_costs: { Args: { p_rows: Json }; Returns: number }
+      consume_product_stock: {
+        Args: {
+          p_product_id: string
+          p_qty: number
+          p_reason: string
+          p_user: string
+        }
+        Returns: undefined
+      }
       apply_price_changes: {
         Args: { p_changes: Json; p_reason?: string }
         Returns: string
@@ -749,6 +794,10 @@ export type Database = {
           total: number
         }[]
       }
+      copy_combo_recipe: {
+        Args: { p_factor?: number; p_from: string; p_to: string }
+        Returns: number
+      }
       expire_pending_orders: { Args: { p_hours?: number }; Returns: number }
       get_public_products: {
         Args: never
@@ -785,6 +834,8 @@ export type Database = {
         }[]
       }
       mark_order_delivered: { Args: { p_order_id: string }; Returns: undefined }
+      product_effective_cost: { Args: { p_id: string }; Returns: number }
+      product_effective_stock: { Args: { p_id: string }; Returns: number }
       register_purchase: {
         Args: {
           p_date: string

@@ -83,9 +83,9 @@ function Stock() {
         getKey={(p) => p.id}
         columns={[
           { header: "Producto", cell: (p) => <span className="font-medium">{p.name}</span> },
-          { header: "Unidades", cell: (p) => p.stock, className: "text-right" },
+          { header: "Unidades", cell: (p) => p.stock_disponible, className: "text-right" },
           { header: "Mínimo", cell: (p) => p.min_stock, className: "text-right", hideOnMobile: true },
-          { header: "Estado", cell: (p) => <AvailabilityBadge value={getAvailability(p.stock, p.min_stock)} /> },
+          { header: "Estado", cell: (p) => <AvailabilityBadge value={getAvailability(p.stock_disponible, p.min_stock)} /> },
         ]}
       />
       <h2 className="mb-3 mt-8 text-lg font-semibold">Movimientos recientes</h2>
