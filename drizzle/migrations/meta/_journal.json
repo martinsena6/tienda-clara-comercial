@@ -50,6 +50,41 @@
       "when": 1794001000000,
       "tag": "0006_combos_con_stock_automatico",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794087400000,
+      "tag": "0007_cuentas_clientes_y_bestsellers",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794087500000,
+      "tag": "0008_propietario_unico",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794087600000,
+      "tag": "0009_rol_propietario_local",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794087700000,
+      "tag": "0010_perfil_personal_y_propietario_local",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794087800000,
+      "tag": "0011_catalogo_vendedor_y_links_drive",
+      "breakpoints": true
     }
   ]
 }

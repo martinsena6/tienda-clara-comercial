@@ -11,10 +11,10 @@ import { RequireAdmin } from "@/components/admin/RequireAdmin";
 import { errorMessage, setUserRole, teamQuery, useMyRole } from "@/lib/data";
 import { inviteUser } from "@/lib/team.functions";
 import { formatDate } from "@/lib/format";
-import { requireAdminRoute } from "@/lib/auth";
+import { requireAppOwnerRoute } from "@/lib/auth";
 
 export const Route = createFileRoute("/_authenticated/admin/usuarios")({
-  beforeLoad: requireAdminRoute,
+  beforeLoad: requireAppOwnerRoute,
   head: () => ({
     meta: [
       { title: "Usuarios — Panel Festiva" },
@@ -53,12 +53,8 @@ function Usuarios() {
       setBusy(false);
     }
   };
-  const change = async (id: string, role: "admin" | "vendedor" | "ninguno") => {
-    if (
-      role !== "vendedor" &&
-      !confirm(role === "admin" ? "¿Darle acceso total de dueño?" : "¿Quitarle el acceso al panel?")
-    )
-      return;
+  const change = async (id: string, role: "vendedor" | "ninguno") => {
+    if (role === "ninguno" && !confirm("¿Quitarle el acceso al panel?")) return;
     try {
       await setUserRole(id, role);
       await qc.invalidateQueries({ queryKey: ["team"] });
@@ -92,17 +88,16 @@ function Usuarios() {
           {
             header: "Permiso",
             cell: (u) =>
-              u.email === myEmail ? (
-                <span>Dueño (vos)</span>
+              u.email.toLowerCase() === myEmail.toLowerCase() ? (
+                <span>Dueño de la app (vos)</span>
+              ) : u.role === "propietario_local" ? (
+                <span>Dueño/a del local</span>
               ) : (
                 <select
                   className="h-9 rounded-md border bg-card px-2 text-sm"
                   value={u.role ?? "ninguno"}
-                  onChange={(e) =>
-                    change(u.user_id, e.target.value as "admin" | "vendedor" | "ninguno")
-                  }
+                  onChange={(e) => change(u.user_id, e.target.value as "vendedor" | "ninguno")}
                 >
-                  <option value="admin">Dueño</option>
                   <option value="vendedor">Vendedor</option>
                   <option value="ninguno">Sin acceso</option>
                 </select>

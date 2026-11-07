@@ -72,6 +72,111 @@ export const publicProductsQuery = queryOptions({
   },
 });
 
+export const bestsellersQuery = queryOptions({
+  queryKey: ["public-bestsellers"],
+  queryFn: async () => {
+    const { data, error } = await supabase.rpc("get_public_bestsellers");
+    if (error) throw error;
+    return data ?? [];
+  },
+});
+
+export const customerProfileQuery = queryOptions({
+  queryKey: ["customer-profile"],
+  queryFn: async () => {
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError) throw userError;
+    if (!userData.user) return null;
+    const { data, error } = await supabase
+      .from("customer_profiles")
+      .select("*")
+      .eq("user_id", userData.user.id)
+      .maybeSingle();
+    if (error) throw error;
+    if (data) return data;
+    const metadata = userData.user.user_metadata ?? {};
+    return {
+      user_id: userData.user.id,
+      full_name: String(metadata["full_name"] ?? metadata["name"] ?? ""),
+      phone: String(metadata["phone"] ?? ""),
+      street: "",
+      street_number: "",
+      unit: "",
+      neighborhood: "",
+      city: "",
+      province: "",
+      postal_code: "",
+      updated_at: "",
+    };
+  },
+});
+
+export const customerOrderHistoryQuery = queryOptions({
+  queryKey: ["customer-order-history"],
+  queryFn: async () => {
+    const { data, error } = await supabase.rpc("customer_order_history");
+    if (error) throw error;
+    return data ?? [];
+  },
+});
+
+export async function saveCustomerProfile(input: {
+  full_name: string;
+  phone: string;
+  street: string;
+  street_number: string;
+  unit: string;
+  neighborhood: string;
+  city: string;
+  province: string;
+  postal_code: string;
+}) {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError) throw userError;
+  if (!userData.user) throw new Error("Iniciá sesión para guardar tus datos");
+  const { error } = await supabase
+    .from("customer_profiles")
+    .upsert(
+      { ...input, user_id: userData.user.id, updated_at: new Date().toISOString() },
+      { onConflict: "user_id" },
+    );
+  if (error) throw error;
+}
+
+export const staffProfileQuery = queryOptions({
+  queryKey: ["staff-profile"],
+  queryFn: async () => {
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError) throw userError;
+    if (!userData.user) throw new Error("Iniciá sesión para ver tu perfil");
+    const { data, error } = await supabase
+      .from("staff_profiles")
+      .select("user_id, full_name, phone, updated_at")
+      .eq("user_id", userData.user.id)
+      .maybeSingle();
+    if (error) throw error;
+    return {
+      user_id: userData.user.id,
+      email: userData.user.email ?? "",
+      full_name: data?.full_name ?? String(userData.user.user_metadata?.["full_name"] ?? ""),
+      phone: data?.phone ?? "",
+    };
+  },
+});
+
+export async function saveStaffProfile(input: { full_name: string; phone: string }) {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError) throw userError;
+  if (!userData.user) throw new Error("Iniciá sesión para guardar tu perfil");
+  const { error } = await supabase
+    .from("staff_profiles")
+    .upsert(
+      { ...input, user_id: userData.user.id, updated_at: new Date().toISOString() },
+      { onConflict: "user_id" },
+    );
+  if (error) throw error;
+}
+
 export const bannersQuery = queryOptions({
   queryKey: ["banners"],
   queryFn: async () => {
@@ -89,7 +194,11 @@ export const bannersQuery = queryOptions({
 export const adminBannersQuery = queryOptions({
   queryKey: ["admin-banners"],
   queryFn: async () => {
-    const { data, error } = await supabase.from("banners").select("*").order("sort").order("created_at");
+    const { data, error } = await supabase
+      .from("banners")
+      .select("*")
+      .order("sort")
+      .order("created_at");
     if (error) throw error;
     return data ?? [];
   },
@@ -165,16 +274,19 @@ export const myRoleQuery = queryOptions({
   queryKey: ["my-role"],
   queryFn: async () => {
     const { data: u } = await supabase.auth.getUser();
-    if (!u.user) return { email: "", role: null as null | "admin" | "vendedor" };
+    if (!u.user)
+      return { email: "", role: null as null | "admin" | "propietario_local" | "vendedor" };
     const { data } = await supabase.from("user_roles").select("role").eq("user_id", u.user.id);
     const roles = (data ?? []).map((r) => r.role);
     return {
       email: u.user.email ?? "",
       role: roles.includes("admin")
         ? ("admin" as const)
-        : roles.includes("vendedor")
-          ? ("vendedor" as const)
-          : null,
+        : roles.includes("propietario_local")
+          ? ("propietario_local" as const)
+          : roles.includes("vendedor")
+            ? ("vendedor" as const)
+            : null,
     };
   },
 });
@@ -185,7 +297,8 @@ export function useMyRole() {
   return {
     role: me.data?.role,
     email: me.data?.email ?? "",
-    isAdmin: me.data?.role === "admin",
+    isAdmin: me.data?.role === "admin" || me.data?.role === "propietario_local",
+    isAppOwner: me.data?.role === "admin",
     isStaff: me.data?.role != null,
     loading: me.isLoading,
   };
@@ -225,7 +338,9 @@ export const priceHistoryQuery = queryOptions({
   queryFn: async () => {
     const { data, error } = await supabase
       .from("price_history")
-      .select("id, product_id, old_price, new_price, old_cost, new_cost, changed_at, batch_id, reason, products(name)")
+      .select(
+        "id, product_id, old_price, new_price, old_cost, new_cost, changed_at, batch_id, reason, products(name)",
+      )
       .order("changed_at", { ascending: false })
       .limit(1000);
     if (error) throw error;
@@ -354,12 +469,10 @@ export async function saveComboRecipe(
   if (existingError) throw existingError;
 
   if (items.length) {
-    const { error } = await supabase
-      .from("combo_items")
-      .upsert(
-        items.map((item) => ({ combo_id: comboId, ...item })),
-        { onConflict: "combo_id,component_id" },
-      );
+    const { error } = await supabase.from("combo_items").upsert(
+      items.map((item) => ({ combo_id: comboId, ...item })),
+      { onConflict: "combo_id,component_id" },
+    );
     if (error) throw error;
   }
 
@@ -474,7 +587,7 @@ export const teamQuery = queryOptions({
   },
 });
 
-export async function setUserRole(userId: string, role: "admin" | "vendedor" | "ninguno") {
+export async function setUserRole(userId: string, role: "vendedor" | "ninguno") {
   const { error } = await supabase.rpc("set_user_role", { p_user_id: userId, p_role: role });
   if (error) throw error;
 }
@@ -684,7 +797,27 @@ export interface ProductInput {
   badge?: string;
 }
 
-export async function createProduct(input: ProductInput & { slug: string; image_url: string }) {
+export async function createProduct(
+  input: ProductInput & { slug: string; image_url: string },
+  includeInternals = true,
+) {
+  if (!includeInternals) {
+    const { error } = await supabase.rpc("save_staff_catalog_product", {
+      p_product_id: null,
+      p_slug: input.slug,
+      p_name: input.name,
+      p_category_id: input.category_id,
+      p_price: input.price,
+      p_description: input.description,
+      p_image_url: input.image_url,
+      p_image_urls: input.image_urls ?? [],
+      p_featured: input.featured ?? false,
+      p_badge: input.badge ?? "",
+    });
+    if (error) throw error;
+    return;
+  }
+
   const { error } = await supabase.from("products").insert({
     slug: input.slug,
     name: input.name,
@@ -701,15 +834,35 @@ export async function createProduct(input: ProductInput & { slug: string; image_
   if (error) throw error;
 }
 
-export async function updateProduct(id: string, input: ProductInput & { image_url: string }) {
+export async function updateProduct(
+  id: string,
+  input: ProductInput & { image_url: string },
+  includeInternals = true,
+) {
+  if (!includeInternals) {
+    const { error } = await supabase.rpc("save_staff_catalog_product", {
+      p_product_id: id,
+      p_slug: "",
+      p_name: input.name,
+      p_category_id: input.category_id,
+      p_price: input.price,
+      p_description: input.description,
+      p_image_url: input.image_url,
+      p_image_urls: input.image_urls ?? [],
+      p_featured: input.featured ?? false,
+      p_badge: input.badge ?? "",
+    });
+    if (error) throw error;
+    return;
+  }
+
   const { error } = await supabase
     .from("products")
     .update({
       name: input.name,
       category_id: input.category_id,
       price: input.price,
-      cost: input.cost,
-      min_stock: input.min_stock,
+      ...(includeInternals ? { cost: input.cost, min_stock: input.min_stock } : {}),
       description: input.description,
       image_url: input.image_url,
       image_urls: input.image_urls ?? [],
@@ -721,7 +874,16 @@ export async function updateProduct(id: string, input: ProductInput & { image_ur
 }
 
 /** Los productos no se borran: se ocultan de la tienda. */
-export async function setProductActive(id: string, active: boolean) {
+export async function setProductActive(id: string, active: boolean, includeInternals = true) {
+  if (!includeInternals) {
+    const { error } = await supabase.rpc("set_staff_product_active", {
+      p_product_id: id,
+      p_active: active,
+    });
+    if (error) throw error;
+    return;
+  }
+
   const { error } = await supabase.from("products").update({ active }).eq("id", id);
   if (error) throw error;
 }
@@ -750,6 +912,26 @@ export async function saveSettings(values: SettingsInput) {
     .from("business_settings")
     .update({ ...values, updated_at: new Date().toISOString() })
     .eq("id", 1);
+  if (error) throw error;
+}
+
+export const driveLinksQuery = queryOptions({
+  queryKey: ["business-drive-links"],
+  queryFn: async () => {
+    const { data, error } = await supabase
+      .from("business_drive_links")
+      .select("photos_url, spreadsheets_url")
+      .eq("id", 1)
+      .maybeSingle();
+    if (error) throw error;
+    return data ?? { photos_url: "", spreadsheets_url: "" };
+  },
+});
+
+export async function saveDriveLinks(values: { photos_url: string; spreadsheets_url: string }) {
+  const { error } = await supabase
+    .from("business_drive_links")
+    .upsert({ id: 1, ...values, updated_at: new Date().toISOString() }, { onConflict: "id" });
   if (error) throw error;
 }
 
@@ -794,6 +976,9 @@ export interface CustomerData {
   email: string;
   delivery: "retiro" | "envio";
   street: string;
+  street_number: string;
+  unit: string;
+  neighborhood: string;
   city: string;
   province: string;
   postal_code: string;
@@ -814,7 +999,12 @@ export async function createOrder(
     p_delivery_method: c.delivery,
     p_delivery_address:
       c.delivery === "envio"
-        ? { street: c.street, city: c.city, province: c.province, postal_code: c.postal_code }
+        ? {
+            street: [c.street, c.street_number, c.unit, c.neighborhood].filter(Boolean).join(", "),
+            city: c.city,
+            province: c.province,
+            postal_code: c.postal_code,
+          }
         : {},
     p_event_date: c.event_date || (null as unknown as string),
     p_notes: c.notes,
@@ -896,7 +1086,8 @@ async function compressProductImage(file: File): Promise<File> {
     context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     const blob = await new Promise<Blob>((resolve, reject) => {
       canvas.toBlob(
-        (result) => result ? resolve(result) : reject(new Error("No se pudo comprimir la imagen")),
+        (result) =>
+          result ? resolve(result) : reject(new Error("No se pudo comprimir la imagen")),
         "image/webp",
         0.82,
       );
@@ -964,7 +1155,17 @@ export async function deleteProductImage(publicUrl: string) {
   if (error) throw error;
 }
 
-export async function updateProductPhoto(id: string, imageUrl: string) {
+export async function updateProductPhoto(id: string, imageUrl: string, includeInternals = true) {
+  if (!includeInternals) {
+    const { error } = await supabase.rpc("set_staff_product_photo", {
+      p_product_id: id,
+      p_image_url: imageUrl,
+      p_image_urls: imageUrl ? [imageUrl] : [],
+    });
+    if (error) throw error;
+    return;
+  }
+
   const { error } = await supabase
     .from("products")
     .update({ image_url: imageUrl, image_urls: imageUrl ? [imageUrl] : [] })
@@ -1010,6 +1211,8 @@ export interface PanelProduct {
   stock_disponible: number;
   min_stock: number;
   active: boolean;
+  featured: boolean;
+  badge: string;
   categories: { name: string } | null;
   /** Solo para el admin (undefined para el vendedor). */
   cost?: number;
@@ -1019,7 +1222,8 @@ export interface PanelProduct {
 /** Productos: el admin lee la tabla; el vendedor la vista sin costos. */
 export function usePanelProducts() {
   const { role, isAdmin } = useMyRole();
-  const a = useQuery({ ...adminProductsQuery, enabled: role === "admin" });
+  const canManageBusiness = role === "admin" || role === "propietario_local";
+  const a = useQuery({ ...adminProductsQuery, enabled: canManageBusiness });
   const s = useQuery({ ...staffProductsQuery, enabled: role === "vendedor" });
   const data: PanelProduct[] = isAdmin
     ? (a.data ?? []).map((p) => ({ ...p, categories: p.categories as { name: string } | null }))
@@ -1049,7 +1253,8 @@ export interface PanelOrder {
 
 export function usePanelOrders() {
   const { role, isAdmin } = useMyRole();
-  const a = useQuery({ ...ordersQuery, enabled: role === "admin" });
+  const canManageBusiness = role === "admin" || role === "propietario_local";
+  const a = useQuery({ ...ordersQuery, enabled: canManageBusiness });
   const s = useQuery({ ...staffOrdersQuery, enabled: role === "vendedor" });
   const data: PanelOrder[] = isAdmin ? (a.data ?? []) : (s.data ?? []);
   return { data, isLoading: role === undefined || (isAdmin ? a.isLoading : s.isLoading), isAdmin };

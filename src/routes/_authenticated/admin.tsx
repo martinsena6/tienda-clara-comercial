@@ -19,7 +19,11 @@ function AdminLayout() {
   const { role, email, loading } = useMyRole();
 
   if (loading) {
-    return <div className="grid min-h-screen place-items-center text-sm text-muted-foreground">Cargando…</div>;
+    return (
+      <div className="grid min-h-screen place-items-center text-sm text-muted-foreground">
+        Cargando…
+      </div>
+    );
   }
 
   // Guardia por rol: sin rol no entra al panel, aunque tenga cuenta.
@@ -30,7 +34,9 @@ function AdminLayout() {
           <ShieldX className="mx-auto size-10 text-muted-foreground" />
           <h1 className="mt-4 text-lg font-semibold">Tu cuenta todavía no tiene permisos</h1>
           <p className="mt-1 text-sm text-muted-foreground">Pedile acceso al dueño del negocio.</p>
-          <Button variant="outline" className="mt-6" onClick={() => signOut(qc, navigate)}><LogOut /> Salir</Button>
+          <Button variant="outline" className="mt-6" onClick={() => signOut(qc, navigate)}>
+            <LogOut /> Salir
+          </Button>
         </div>
       </div>
     );
@@ -44,11 +50,25 @@ function AdminLayout() {
           <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b bg-background/90 px-4 backdrop-blur">
             <SidebarTrigger />
             <span className="text-sm text-muted-foreground">Panel administrativo</span>
-            <Badge variant="secondary" className="text-xs">Beta</Badge>
+            <Badge variant="secondary" className="text-xs">
+              Beta
+            </Badge>
             <span className="ml-auto hidden truncate text-sm text-muted-foreground sm:inline">
-              {email} {role === "admin" ? "· Dueño" : "· Vendedor"}
+              {email}{" "}
+              {role === "admin"
+                ? "· Dueño de la app"
+                : role === "propietario_local"
+                  ? "· Dueño/a del local"
+                  : "· Vendedor"}
             </span>
-            <Button variant="ghost" size="sm" className="ml-auto sm:ml-0" onClick={() => signOut(qc, navigate)}><LogOut /> Salir</Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-auto sm:ml-0"
+              onClick={() => signOut(qc, navigate)}
+            >
+              <LogOut /> Salir
+            </Button>
           </header>
           <main className="flex-1 p-4 sm:p-6 lg:p-8">
             <Outlet />

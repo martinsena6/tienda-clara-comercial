@@ -16,6 +16,19 @@ export async function requireAdminRoute() {
   if (!data) throw redirect({ to: "/admin" });
 }
 
+export async function requireAppOwnerRoute() {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError) throw userError;
+  if (!userData.user) throw redirect({ to: "/auth" });
+
+  const { data, error } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userData.user.id);
+  if (error) throw error;
+  if (!data?.some((entry) => entry.role === "admin")) throw redirect({ to: "/admin" });
+}
+
 /** Sesión actual (solo para mostrar quién entró). El acceso real lo controla la base. */
 export function useSession() {
   const [email, setEmail] = useState<string | null>(null);

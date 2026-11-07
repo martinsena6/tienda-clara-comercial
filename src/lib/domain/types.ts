@@ -1,6 +1,6 @@
 // Tipos del dominio comercial. Preparados para mapearse luego a tablas de PostgreSQL.
 
-export type Role = "admin" | "vendedor";
+export type Role = "admin" | "propietario_local" | "vendedor";
 
 export interface Category {
   id: string;

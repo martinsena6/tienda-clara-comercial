@@ -1,10 +1,4 @@
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[]
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
@@ -164,6 +158,27 @@ export type Database = {
         }
         Relationships: []
       }
+      business_drive_links: {
+        Row: {
+          id: number
+          photos_url: string
+          spreadsheets_url: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          photos_url?: string
+          spreadsheets_url?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          photos_url?: string
+          spreadsheets_url?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           id: string
@@ -218,6 +233,48 @@ export type Database = {
           },
         ]
       }
+      customer_profiles: {
+        Row: {
+          city: string
+          full_name: string
+          neighborhood: string
+          phone: string
+          postal_code: string
+          province: string
+          street: string
+          street_number: string
+          unit: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          city?: string
+          full_name?: string
+          neighborhood?: string
+          phone?: string
+          postal_code?: string
+          province?: string
+          street?: string
+          street_number?: string
+          unit?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          city?: string
+          full_name?: string
+          neighborhood?: string
+          phone?: string
+          postal_code?: string
+          province?: string
+          street?: string
+          street_number?: string
+          unit?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           amount: number
@@ -257,6 +314,7 @@ export type Database = {
           customer_email: string
           customer_name: string
           customer_phone: string
+          customer_user_id: string | null
           delivered_at: string | null
           delivery_address: Json
           delivery_method: string
@@ -277,6 +335,7 @@ export type Database = {
           customer_email?: string
           customer_name?: string
           customer_phone?: string
+          customer_user_id?: string | null
           delivered_at?: string | null
           delivery_address?: Json
           delivery_method?: string
@@ -297,6 +356,7 @@ export type Database = {
           customer_email?: string
           customer_name?: string
           customer_phone?: string
+          customer_user_id?: string | null
           delivered_at?: string | null
           delivery_address?: Json
           delivery_method?: string
@@ -565,6 +625,27 @@ export type Database = {
           },
         ]
       }
+      staff_profiles: {
+        Row: {
+          full_name: string
+          phone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          full_name?: string
+          phone?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          full_name?: string
+          phone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       suppliers: {
         Row: {
           created_at: string
@@ -815,7 +896,34 @@ export type Database = {
           slug: string
         }[]
       }
+      get_public_bestsellers: {
+        Args: never
+        Returns: { slug: string }[]
+      }
       link_product_photos: { Args: { p_base_url: string }; Returns: number }
+      save_staff_catalog_product: {
+        Args: {
+          p_badge: string
+          p_category_id: string
+          p_description: string
+          p_featured: boolean
+          p_image_url: string
+          p_image_urls: Json
+          p_name: string
+          p_price: number
+          p_product_id: string | null
+          p_slug: string
+        }
+        Returns: string
+      }
+      set_staff_product_active: {
+        Args: { p_active: boolean; p_product_id: string }
+        Returns: undefined
+      }
+      set_staff_product_photo: {
+        Args: { p_image_url: string; p_image_urls: Json; p_product_id: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -824,6 +932,22 @@ export type Database = {
         Returns: boolean
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
+      customer_order_history: {
+        Args: never
+        Returns: {
+          created_at: string
+          delivery_address: Json
+          delivery_method: string
+          delivered_at: string | null
+          event_date: string | null
+          items: Json
+          notes: string
+          order_id: string
+          order_number: number
+          status: string
+          total: number
+        }[]
+      }
       list_team: {
         Args: never
         Returns: {
@@ -884,7 +1008,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "vendedor"
+      app_role: "admin" | "propietario_local" | "vendedor"
       order_status: "pendiente" | "confirmado" | "cancelado"
       stock_movement_type: "entrada" | "salida" | "ajuste"
     }
@@ -917,10 +1041,8 @@ export type Tables<
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -929,8 +1051,7 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -954,8 +1075,7 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -979,8 +1099,7 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
+    keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals },
   EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -996,8 +1115,7 @@ export type Enums<
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
+    keyof DefaultSchema["CompositeTypes"] | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }

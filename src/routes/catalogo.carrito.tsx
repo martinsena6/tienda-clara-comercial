@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { MessageCircle, Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormField } from "@/components/admin/FormField";
@@ -10,12 +10,14 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { useCart } from "@/lib/cart";
 import {
   createOrder,
+  customerProfileQuery,
   errorMessage,
   publicProductsQuery,
   todayAR,
   type CustomerData,
 } from "@/lib/data";
 import { formatPrice } from "@/lib/format";
+import { useSession } from "@/lib/auth";
 
 export const Route = createFileRoute("/catalogo/carrito")({
   head: () => ({
@@ -45,6 +47,9 @@ const EMPTY: CustomerData = {
   email: "",
   delivery: "retiro",
   street: "",
+  street_number: "",
+  unit: "",
+  neighborhood: "",
   city: "Resistencia",
   province: "Chaco",
   postal_code: "",
@@ -65,12 +70,21 @@ export function normalizeArPhone(raw: string): string | null {
 function Carrito() {
   const { items, setQuantity, remove } = useCart();
   const { data: products } = useSuspenseQuery(publicProductsQuery);
+  const sessionEmail = useSession();
+  const profileQuery = useQuery({
+    ...customerProfileQuery,
+    enabled: Boolean(sessionEmail),
+  });
   const navigate = useNavigate();
   const [c, setC] = useState<CustomerData>(EMPTY);
+  const [customerEdited, setCustomerEdited] = useState(false);
   const [hp, setHp] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
-  const set = (k: keyof CustomerData, v: string) => setC((x) => ({ ...x, [k]: v }));
+  const set = (k: keyof CustomerData, v: string) => {
+    setCustomerEdited(true);
+    setC((x) => ({ ...x, [k]: v }));
+  };
 
   useEffect(() => {
     try {
@@ -80,6 +94,24 @@ function Carrito() {
       /* sin almacenamiento */
     }
   }, []);
+
+  useEffect(() => {
+    const saved = profileQuery.data;
+    if (!saved || customerEdited) return;
+    setC((current) => ({
+      ...current,
+      name: saved.full_name || current.name,
+      phone: saved.phone || current.phone,
+      email: sessionEmail || current.email,
+      street: saved.street,
+      street_number: saved.street_number,
+      unit: saved.unit,
+      neighborhood: saved.neighborhood,
+      city: saved.city || current.city,
+      province: saved.province || current.province,
+      postal_code: saved.postal_code,
+    }));
+  }, [customerEdited, profileQuery.data, sessionEmail]);
 
   const lines = Object.entries(items)
     .map(([slug, quantity]) => ({ product: products.find((p) => p.slug === slug), quantity }))
@@ -97,9 +129,13 @@ function Carrito() {
     if (!phone) return setErr("Ingresá un celular válido con código de área (ej: 362 5436293)");
     if (
       c.delivery === "envio" &&
-      (!c.street.trim() || !c.city.trim() || !c.province.trim() || !c.postal_code.trim())
+      (!c.street.trim() ||
+        !c.street_number.trim() ||
+        !c.city.trim() ||
+        !c.province.trim() ||
+        !c.postal_code.trim())
     )
-      return setErr("Completá calle y número, localidad, provincia y código postal");
+      return setErr("Completá calle, número, localidad, provincia y código postal");
     if (c.event_date && c.event_date < todayAR())
       return setErr("La fecha del evento no puede ser pasada");
     setBusy(true);
@@ -259,6 +295,23 @@ function Carrito() {
                   autoComplete="email"
                 />
               </FormField>
+              {!sessionEmail && (
+                <p className="text-xs text-muted-foreground">
+                  ¿Pedís seguido?{" "}
+                  <Link
+                    to="/cuenta"
+                    className="font-medium text-primary underline-offset-4 hover:underline"
+                  >
+                    Ingresá o creá una cuenta
+                  </Link>{" "}
+                  para guardar tus datos. También podés continuar como invitado.
+                </p>
+              )}
+              {profileQuery.error && (
+                <p role="alert" className="text-xs text-destructive">
+                  No se pudieron precargar tus datos guardados: {errorMessage(profileQuery.error)}
+                </p>
+              )}
               <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Entrega">
                 {(["retiro", "envio"] as const).map((d) => (
                   <button
@@ -276,11 +329,36 @@ function Carrito() {
               {c.delivery === "envio" && (
                 <div className="space-y-2">
                   <Input
-                    aria-label="Calle y número"
-                    placeholder="Calle y número *"
+                    aria-label="Calle"
+                    placeholder="Calle *"
                     value={c.street}
                     onChange={(e) => set("street", e.target.value)}
                     maxLength={150}
+                    required
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      aria-label="Número"
+                      placeholder="Número *"
+                      value={c.street_number}
+                      onChange={(e) => set("street_number", e.target.value)}
+                      maxLength={20}
+                      required
+                    />
+                    <Input
+                      aria-label="Piso o departamento"
+                      placeholder="Piso/depto"
+                      value={c.unit}
+                      onChange={(e) => set("unit", e.target.value)}
+                      maxLength={40}
+                    />
+                  </div>
+                  <Input
+                    aria-label="Barrio"
+                    placeholder="Barrio"
+                    value={c.neighborhood}
+                    onChange={(e) => set("neighborhood", e.target.value)}
+                    maxLength={80}
                   />
                   <div className="grid grid-cols-2 gap-2">
                     <Input

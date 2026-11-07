@@ -14,6 +14,7 @@ import {
   Tags,
   Truck,
   Users,
+  UserRound,
   Wallet,
 } from "lucide-react";
 import {
@@ -36,6 +37,7 @@ interface Item {
   url: string;
   icon: typeof LayoutDashboard;
   adminOnly?: boolean;
+  ownerOnly?: boolean;
 }
 
 const groups: { label: string; items: Item[] }[] = [
@@ -65,7 +67,8 @@ const groups: { label: string; items: Item[] }[] = [
   {
     label: "Negocio",
     items: [
-      { title: "Usuarios", url: "/admin/usuarios", icon: Users, adminOnly: true },
+      { title: "Mi perfil", url: "/admin/perfil", icon: UserRound },
+      { title: "Usuarios", url: "/admin/usuarios", icon: Users, ownerOnly: true },
       { title: "Configuración", url: "/admin/configuracion", icon: Settings, adminOnly: true },
     ],
   },
@@ -73,7 +76,7 @@ const groups: { label: string; items: Item[] }[] = [
 
 export function AdminSidebar() {
   const name = useQuery(settingsQuery).data?.name ?? DEFAULT_SETTINGS.name;
-  const { isAdmin } = useMyRole();
+  const { isAdmin, isAppOwner } = useMyRole();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const isActive = (url: string) =>
     url === "/admin" ? path === "/admin" || path === "/admin/" : path.startsWith(url);
@@ -93,7 +96,9 @@ export function AdminSidebar() {
       </SidebarHeader>
       <SidebarContent>
         {groups.map((g) => {
-          const items = g.items.filter((i) => !i.adminOnly || isAdmin);
+          const items = g.items.filter(
+            (i) => (!i.adminOnly || isAdmin) && (!i.ownerOnly || isAppOwner),
+          );
           if (items.length === 0) return null;
           return (
             <SidebarGroup key={g.label}>

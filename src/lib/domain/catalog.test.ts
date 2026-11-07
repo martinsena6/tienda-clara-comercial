@@ -19,6 +19,8 @@ describe("catálogo", () => {
     expect(searchPublicProducts(sample, "emoji").map((p) => p.slug)).toEqual(["a"]);
     expect(searchPublicProducts(sample, undefined, "gomitas").map((p) => p.slug)).toEqual(["b"]);
     expect(searchPublicProducts(sample, "PINATA").map((p) => p.slug)).toEqual(["b"]);
+    expect(searchPublicProducts(sample, "chupetin").map((p) => p.slug)).toEqual(["a"]);
+    expect(searchPublicProducts(sample, "GOM").map((p) => p.slug)).toEqual(["b"]);
   });
 
   it("aplica filtros y mantiene los productos sin stock al final", () => {

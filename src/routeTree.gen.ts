@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CuentaRouteImport } from './routes/cuenta'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as CatalogoCarritoRouteImport } from './routes/catalogo.carrito'
 import { Route as CatalogoCategoriasRouteImport } from './routes/catalogo.categorias'
@@ -24,6 +25,7 @@ import { Route as AuthenticatedAdminCostosRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAdminGastosRouteImport } from './routes/_authenticated/admin.gastos'
 import { Route as AuthenticatedAdminInventarioRouteImport } from './routes/_authenticated/admin.inventario'
 import { Route as AuthenticatedAdminMostradorRouteImport } from './routes/_authenticated/admin.mostrador'
+import { Route as AuthenticatedAdminPerfilRouteImport } from './routes/_authenticated/admin.perfil'
 import { Route as AuthenticatedAdminPreciosRouteImport } from './routes/_authenticated/admin.precios'
 import { Route as AuthenticatedAdminProductosRouteImport } from './routes/_authenticated/admin.productos'
 import { Route as AuthenticatedAdminRentabilidadRouteImport } from './routes/_authenticated/admin.rentabilidad'
@@ -46,6 +48,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CuentaRoute = CuentaRouteImport.update({
+  id: '/cuenta',
+  path: '/cuenta',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
@@ -115,6 +122,12 @@ const AuthenticatedAdminMostradorRoute =
     path: '/mostrador',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminPerfilRoute =
+  AuthenticatedAdminPerfilRouteImport.update({
+    id: '/perfil',
+    path: '/perfil',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminPreciosRoute =
   AuthenticatedAdminPreciosRouteImport.update({
     id: '/precios',
@@ -170,6 +183,7 @@ const CatalogoProductoSlugRoute = CatalogoProductoSlugRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/cuenta': typeof CuentaRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/catalogo/carrito': typeof CatalogoCarritoRoute
   '/catalogo/categorias': typeof CatalogoCategoriasRoute
@@ -181,6 +195,7 @@ export interface FileRoutesByFullPath {
   '/admin/gastos': typeof AuthenticatedAdminGastosRoute
   '/admin/inventario': typeof AuthenticatedAdminInventarioRoute
   '/admin/mostrador': typeof AuthenticatedAdminMostradorRoute
+  '/admin/perfil': typeof AuthenticatedAdminPerfilRoute
   '/admin/precios': typeof AuthenticatedAdminPreciosRoute
   '/admin/productos': typeof AuthenticatedAdminProductosRoute
   '/admin/rentabilidad': typeof AuthenticatedAdminRentabilidadRoute
@@ -195,6 +210,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/cuenta': typeof CuentaRoute
   '/catalogo/carrito': typeof CatalogoCarritoRoute
   '/catalogo/categorias': typeof CatalogoCategoriasRoute
   '/catalogo/productos': typeof CatalogoProductosRoute
@@ -205,6 +221,7 @@ export interface FileRoutesByTo {
   '/admin/gastos': typeof AuthenticatedAdminGastosRoute
   '/admin/inventario': typeof AuthenticatedAdminInventarioRoute
   '/admin/mostrador': typeof AuthenticatedAdminMostradorRoute
+  '/admin/perfil': typeof AuthenticatedAdminPerfilRoute
   '/admin/precios': typeof AuthenticatedAdminPreciosRoute
   '/admin/productos': typeof AuthenticatedAdminProductosRoute
   '/admin/rentabilidad': typeof AuthenticatedAdminRentabilidadRoute
@@ -221,6 +238,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/cuenta': typeof CuentaRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/catalogo/carrito': typeof CatalogoCarritoRoute
   '/catalogo/categorias': typeof CatalogoCategoriasRoute
@@ -232,6 +250,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/gastos': typeof AuthenticatedAdminGastosRoute
   '/_authenticated/admin/inventario': typeof AuthenticatedAdminInventarioRoute
   '/_authenticated/admin/mostrador': typeof AuthenticatedAdminMostradorRoute
+  '/_authenticated/admin/perfil': typeof AuthenticatedAdminPerfilRoute
   '/_authenticated/admin/precios': typeof AuthenticatedAdminPreciosRoute
   '/_authenticated/admin/productos': typeof AuthenticatedAdminProductosRoute
   '/_authenticated/admin/rentabilidad': typeof AuthenticatedAdminRentabilidadRoute
@@ -248,6 +267,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/cuenta'
     | '/admin'
     | '/catalogo/carrito'
     | '/catalogo/categorias'
@@ -259,6 +279,7 @@ export interface FileRouteTypes {
     | '/admin/gastos'
     | '/admin/inventario'
     | '/admin/mostrador'
+    | '/admin/perfil'
     | '/admin/precios'
     | '/admin/productos'
     | '/admin/rentabilidad'
@@ -273,6 +294,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/cuenta'
     | '/catalogo/carrito'
     | '/catalogo/categorias'
     | '/catalogo/productos'
@@ -283,6 +305,7 @@ export interface FileRouteTypes {
     | '/admin/gastos'
     | '/admin/inventario'
     | '/admin/mostrador'
+    | '/admin/perfil'
     | '/admin/precios'
     | '/admin/productos'
     | '/admin/rentabilidad'
@@ -298,6 +321,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/cuenta'
     | '/_authenticated/admin'
     | '/catalogo/carrito'
     | '/catalogo/categorias'
@@ -309,6 +333,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/gastos'
     | '/_authenticated/admin/inventario'
     | '/_authenticated/admin/mostrador'
+    | '/_authenticated/admin/perfil'
     | '/_authenticated/admin/precios'
     | '/_authenticated/admin/productos'
     | '/_authenticated/admin/rentabilidad'
@@ -325,6 +350,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  CuentaRoute: typeof CuentaRoute
   CatalogoCarritoRoute: typeof CatalogoCarritoRoute
   CatalogoCategoriasRoute: typeof CatalogoCategoriasRoute
   CatalogoProductosRoute: typeof CatalogoProductosRoute
@@ -353,6 +379,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cuenta': {
+      id: '/cuenta'
+      path: '/cuenta'
+      fullPath: '/cuenta'
+      preLoaderRoute: typeof CuentaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin': {
@@ -439,6 +472,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminMostradorRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/perfil': {
+      id: '/_authenticated/admin/perfil'
+      path: '/perfil'
+      fullPath: '/admin/perfil'
+      preLoaderRoute: typeof AuthenticatedAdminPerfilRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/precios': {
       id: '/_authenticated/admin/precios'
       path: '/precios'
@@ -513,6 +553,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminGastosRoute: typeof AuthenticatedAdminGastosRoute
   AuthenticatedAdminInventarioRoute: typeof AuthenticatedAdminInventarioRoute
   AuthenticatedAdminMostradorRoute: typeof AuthenticatedAdminMostradorRoute
+  AuthenticatedAdminPerfilRoute: typeof AuthenticatedAdminPerfilRoute
   AuthenticatedAdminPreciosRoute: typeof AuthenticatedAdminPreciosRoute
   AuthenticatedAdminProductosRoute: typeof AuthenticatedAdminProductosRoute
   AuthenticatedAdminRentabilidadRoute: typeof AuthenticatedAdminRentabilidadRoute
@@ -531,6 +572,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminGastosRoute: AuthenticatedAdminGastosRoute,
   AuthenticatedAdminInventarioRoute: AuthenticatedAdminInventarioRoute,
   AuthenticatedAdminMostradorRoute: AuthenticatedAdminMostradorRoute,
+  AuthenticatedAdminPerfilRoute: AuthenticatedAdminPerfilRoute,
   AuthenticatedAdminPreciosRoute: AuthenticatedAdminPreciosRoute,
   AuthenticatedAdminProductosRoute: AuthenticatedAdminProductosRoute,
   AuthenticatedAdminRentabilidadRoute: AuthenticatedAdminRentabilidadRoute,
@@ -559,6 +601,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  CuentaRoute: CuentaRoute,
   CatalogoCarritoRoute: CatalogoCarritoRoute,
   CatalogoCategoriasRoute: CatalogoCategoriasRoute,
   CatalogoProductosRoute: CatalogoProductosRoute,
