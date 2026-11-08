@@ -90,7 +90,7 @@ function Usuarios() {
             cell: (u) =>
               u.email.toLowerCase() === myEmail.toLowerCase() ? (
                 <span>Dueño de la app (vos)</span>
-              ) : u.role === "propietario_local" ? (
+              ) : (u.role as string) === "propietario_local" ? (
                 <span>Dueño/a del local</span>
               ) : (
                 <select
