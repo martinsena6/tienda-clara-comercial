@@ -99,6 +99,13 @@
       "when": 1794088000000,
       "tag": "0013_reposicion_siete_unidades",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794088100000,
+      "tag": "0014_staff_catalog_role_guard",
+      "breakpoints": true
     }
   ]
 }
