@@ -468,7 +468,7 @@ function Cuenta() {
             />
           ) : (
             <ul className="divide-y">
-              {(historyQuery.data ?? []).map((order) => {
+              {(historyQuery.data ?? []).map((order: any) => {
                 const status =
                   order.status === "cancelado"
                     ? "Cancelado"
