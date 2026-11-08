@@ -51,6 +51,10 @@ function Home() {
     .map((item) => productBySlug.get(item.slug))
     .filter((product): product is (typeof products)[number] => Boolean(product))
     .slice(0, 8);
+  const sweetsForDisplay =
+    popularSweets.length > 0
+      ? popularSweets
+      : products.filter((product) => product.categorySlug === "golosinas").slice(0, 8);
   const banner = banners.length ? banners[bannerIndex % banners.length] : null;
   useEffect(() => {
     if (banners.length < 2) return;
@@ -227,9 +231,13 @@ function Home() {
       <section className="mt-12">
         <div className="flex items-end justify-between gap-3">
           <div>
-            <h2 className="text-xl font-bold">Golosinas más pedidas</h2>
+            <h2 className="text-xl font-bold">
+              {popularSweets.length > 0 ? "Golosinas más pedidas" : "Golosinas para elegir"}
+            </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Las favoritas según los pedidos confirmados.
+              {popularSweets.length > 0
+                ? "Las favoritas según los pedidos confirmados."
+                : "Una selección del catálogo para descubrir."}
             </p>
           </div>
           <Link
@@ -240,13 +248,14 @@ function Home() {
             Ver golosinas
           </Link>
         </div>
-        {bestsellersError ? (
-          <p role="alert" className="mt-4 text-sm text-destructive">
-            No pudimos cargar el ranking de golosinas.
+        {bestsellersError && (
+          <p role="status" className="mt-4 text-sm text-muted-foreground">
+            Mostramos productos del catálogo mientras se actualiza el ranking.
           </p>
-        ) : popularSweets.length ? (
+        )}
+        {sweetsForDisplay.length ? (
           <div className="mt-4 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-3">
-            {popularSweets.map((product) => (
+            {sweetsForDisplay.map((product) => (
               <div key={product.slug} className="w-[72vw] max-w-60 shrink-0 snap-start sm:w-60">
                 <ProductCard product={product} />
               </div>
@@ -254,7 +263,7 @@ function Home() {
           </div>
         ) : (
           <p className="mt-4 text-sm text-muted-foreground">
-            Todavía no hay suficientes ventas confirmadas para armar este ranking.
+            Próximamente habrá golosinas para mostrar.
           </p>
         )}
       </section>

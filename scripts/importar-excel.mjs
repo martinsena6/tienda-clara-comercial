@@ -38,6 +38,13 @@ function matchingKeys(value) {
   if (key.startsWith("chup") && !key.startsWith("chupetin")) {
     keys.add(`chupetines${key.slice(4)}`);
   }
+  if (key.startsWith("mast") && !key.startsWith("masticable")) {
+    keys.add(`masticable${key.slice(4)}`);
+  }
+  if (key.startsWith("past") && !key.startsWith("pastillas")) {
+    keys.add(`pastillas${key.slice(4)}`);
+  }
+  keys.add(key.replaceAll("pta", "punta"));
   return [...keys];
 }
 
