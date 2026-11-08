@@ -21,7 +21,13 @@ function range(p: Exclude<Period, "personalizado">) {
   return argentinaRange(`${py}-${mm}-01`, `${py}-${mm}-${last}`);
 }
 
-export function ReportPanel({ defaultPeriod = "mes" }: { defaultPeriod?: "hoy" | "mes" }) {
+export function ReportPanel({
+  defaultPeriod = "mes",
+  compact = false,
+}: {
+  defaultPeriod?: "hoy" | "mes";
+  compact?: boolean;
+}) {
   const [p, setP] = useState<Period>(defaultPeriod);
   const [customFrom, setCustomFrom] = useState(todayAR());
   const [customTo, setCustomTo] = useState(todayAR());
@@ -35,16 +41,29 @@ export function ReportPanel({ defaultPeriod = "mes" }: { defaultPeriod?: "hoy" |
   const { data, isLoading, isError, error } = useQuery({ ...query, enabled: !!r });
   const labels: Record<Period, string> = {
     hoy: "Hoy",
-    "7d": "7 días",
+    "7d": "Últimos 7 días",
     mes: "Este mes",
     anterior: "Mes anterior",
     personalizado: "Personalizado",
   };
+  const visiblePeriods: Period[] = compact
+    ? ["mes", "anterior", "7d", "hoy"]
+    : (Object.keys(labels) as Period[]);
   const bruta = (data?.ventas ?? 0) - (data?.costo_mercaderia ?? 0);
+  const salesLabel =
+    p === "mes"
+      ? "Total vendido en el mes"
+      : p === "anterior"
+        ? "Total vendido el mes anterior"
+        : p === "7d"
+          ? "Total vendido en los últimos 7 días"
+          : p === "hoy"
+            ? "Total vendido hoy"
+            : "Total vendido en el período";
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
-        {(Object.keys(labels) as Period[]).map((k) => (
+        {visiblePeriods.map((k) => (
           <button
             key={k}
             onClick={() => setP(k)}
@@ -95,32 +114,38 @@ export function ReportPanel({ defaultPeriod = "mes" }: { defaultPeriod?: "hoy" |
               <AlertTriangle className="size-4" /> La ganancia no es confiable: faltan costos.
             </div>
           )}
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
             <StatCard
-              label="Ventas"
+              label={salesLabel}
               value={formatPrice(data.ventas)}
               hint={`${data.pedidos} pedidos · ticket ${formatPrice(data.ticket_promedio)}`}
               icon={DollarSign}
             />
             <StatCard
-              label="Ganancia bruta"
-              value={formatPrice(bruta)}
-              hint={`Costo mercadería ${formatPrice(data.costo_mercaderia)}`}
-              icon={TrendingUp}
+              label="Costo de mercadería"
+              value={formatPrice(data.costo_mercaderia)}
+              icon={Receipt}
             />
-            <StatCard label="Gastos" value={formatPrice(data.gastos)} icon={Wallet} />
+            <StatCard label="Ganancia bruta" value={formatPrice(bruta)} icon={TrendingUp} />
+            <StatCard label="Gastos registrados" value={formatPrice(data.gastos)} icon={Wallet} />
             <StatCard
-              label="Resultado neto"
+              label="Ganancia neta real"
               value={formatPrice(bruta - data.gastos)}
-              hint={`${data.pendientes} pedidos pendientes`}
               icon={Receipt}
             />
           </div>
+          {data.pendientes > 0 && (
+            <div className="flex items-center gap-2 rounded-lg border border-warning bg-warning/10 p-3 text-sm">
+              <AlertTriangle className="size-4" />
+              Hay {data.pendientes} pedido{data.pendientes === 1 ? "" : "s"} pendiente
+              {data.pendientes === 1 ? "" : "s"} de confirmación.
+            </div>
+          )}
           <div className="grid gap-4 lg:grid-cols-2">
             <section className="rounded-xl border bg-card p-5 text-sm">
-              <h2 className="mb-2 font-semibold">Top 10 por unidades</h2>
+              <h2 className="mb-2 font-semibold">Los 5 productos más vendidos</h2>
               <ul className="divide-y">
-                {data.top_unidades.map((t) => (
+                {data.top_unidades.slice(0, 5).map((t) => (
                   <li key={t.name} className="flex justify-between py-1.5">
                     <span>{t.name}</span>
                     <span>{t.unidades} u.</span>
@@ -128,72 +153,78 @@ export function ReportPanel({ defaultPeriod = "mes" }: { defaultPeriod?: "hoy" |
                 ))}
               </ul>
             </section>
-            <section className="rounded-xl border bg-card p-5 text-sm">
-              <h2 className="mb-2 font-semibold">Top 10 por ganancia</h2>
-              <ul className="divide-y">
-                {data.top_ganancia.map((t) => (
-                  <li key={t.name} className="flex justify-between py-1.5">
-                    <span>{t.name}</span>
-                    <span>{formatPrice(t.ganancia)}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-            <section className="rounded-xl border bg-card p-5 text-sm">
-              <h2 className="mb-2 font-semibold">Gastos por categoría</h2>
-              <ul className="divide-y">
-                {data.gastos_por_categoria.map((g) => (
-                  <li key={g.category} className="flex justify-between py-1.5">
-                    <span>{g.category}</span>
-                    <span>{formatPrice(g.total)}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-            <section className="rounded-xl border bg-card p-5 text-sm lg:col-span-2">
-              <h2 className="mb-3 font-semibold">Ventas por día</h2>
-              {data.por_dia.length === 0 ? (
-                <p className="text-muted-foreground">No hay ventas confirmadas en este período.</p>
-              ) : (
-                <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={data.por_dia}
-                      margin={{ top: 8, right: 12, bottom: 4, left: 0 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis
-                        dataKey="dia"
-                        tickFormatter={(value: string) => value.slice(5)}
-                        tick={{ fontSize: 12 }}
-                      />
-                      <YAxis
-                        tick={{ fontSize: 12 }}
-                        tickFormatter={(value: number) => formatPrice(value)}
-                        width={88}
-                      />
-                      <Tooltip
-                        formatter={(value) => formatPrice(Number(value ?? 0))}
-                        labelFormatter={(value) => `Día ${String(value)}`}
-                      />
-                      <Bar
-                        dataKey="ventas"
-                        name="Ventas"
-                        fill="hsl(var(--primary))"
-                        radius={[4, 4, 0, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </section>
-            <section className="rounded-xl border bg-card p-5 text-sm">
-              <h2 className="mb-2 font-semibold">Inventario</h2>
-              <p>A costo: {formatPrice(data.inventario_costo)}</p>
-              <p>A precio: {formatPrice(data.inventario_precio)}</p>
-              <p>Sin movimiento en 60 días: {data.sin_movimiento_60d}</p>
-              <p>Productos sin costo: {data.productos_sin_costo}</p>
-            </section>
+            {!compact && (
+              <>
+                <section className="rounded-xl border bg-card p-5 text-sm">
+                  <h2 className="mb-2 font-semibold">Top 10 por ganancia</h2>
+                  <ul className="divide-y">
+                    {data.top_ganancia.map((t) => (
+                      <li key={t.name} className="flex justify-between py-1.5">
+                        <span>{t.name}</span>
+                        <span>{formatPrice(t.ganancia)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+                <section className="rounded-xl border bg-card p-5 text-sm">
+                  <h2 className="mb-2 font-semibold">Gastos por categoría</h2>
+                  <ul className="divide-y">
+                    {data.gastos_por_categoria.map((g) => (
+                      <li key={g.category} className="flex justify-between py-1.5">
+                        <span>{g.category}</span>
+                        <span>{formatPrice(g.total)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+                <section className="rounded-xl border bg-card p-5 text-sm lg:col-span-2">
+                  <h2 className="mb-3 font-semibold">Ventas por día</h2>
+                  {data.por_dia.length === 0 ? (
+                    <p className="text-muted-foreground">
+                      No hay ventas confirmadas en este período.
+                    </p>
+                  ) : (
+                    <div className="h-64 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={data.por_dia}
+                          margin={{ top: 8, right: 12, bottom: 4, left: 0 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                          <XAxis
+                            dataKey="dia"
+                            tickFormatter={(value: string) => value.slice(5)}
+                            tick={{ fontSize: 12 }}
+                          />
+                          <YAxis
+                            tick={{ fontSize: 12 }}
+                            tickFormatter={(value: number) => formatPrice(value)}
+                            width={88}
+                          />
+                          <Tooltip
+                            formatter={(value) => formatPrice(Number(value ?? 0))}
+                            labelFormatter={(value) => `Día ${String(value)}`}
+                          />
+                          <Bar
+                            dataKey="ventas"
+                            name="Ventas"
+                            fill="hsl(var(--primary))"
+                            radius={[4, 4, 0, 0]}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </section>
+                <section className="rounded-xl border bg-card p-5 text-sm">
+                  <h2 className="mb-2 font-semibold">Inventario</h2>
+                  <p>A costo: {formatPrice(data.inventario_costo)}</p>
+                  <p>A precio: {formatPrice(data.inventario_precio)}</p>
+                  <p>Sin movimiento en 60 días: {data.sin_movimiento_60d}</p>
+                  <p>Productos sin costo: {data.productos_sin_costo}</p>
+                </section>
+              </>
+            )}
           </div>
         </>
       )}

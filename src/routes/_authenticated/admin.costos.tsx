@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type ChangeEvent } from "react";
-import { ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
@@ -11,7 +10,6 @@ import { RequireAdmin } from "@/components/admin/RequireAdmin";
 import {
   adminProductsQuery,
   applyCosts,
-  driveLinksQuery,
   errorMessage,
   normalizeName,
   parseArNumber,
@@ -56,7 +54,6 @@ function pick(r: Record<string, unknown>, starts: string) {
 function Costos() {
   const qc = useQueryClient();
   const products = useQuery(adminProductsQuery).data ?? [];
-  const driveLinks = useQuery(driveLinksQuery);
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState(false);
 
@@ -133,22 +130,8 @@ function Costos() {
     <>
       <PageHeader
         title="Costos"
-        description={`Subí la planilla festiva-costos.xlsx (hoja «Costos»). Productos activos sin costo: ${sinCosto}.`}
-        actions={
-          driveLinks.data?.spreadsheets_url ? (
-            <Button asChild variant="outline">
-              <a href={driveLinks.data.spreadsheets_url} target="_blank" rel="noopener noreferrer">
-                <ExternalLink /> Abrir planilla en Drive
-              </a>
-            </Button>
-          ) : undefined
-        }
+        description={`Importá desde un archivo Excel o CSV guardado en tu dispositivo. Productos activos sin costo: ${sinCosto}.`}
       />
-      {driveLinks.error && (
-        <p role="alert" className="mb-4 text-sm text-destructive">
-          No pudimos cargar el enlace de Drive: {errorMessage(driveLinks.error)}
-        </p>
-      )}
       <div className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border bg-card p-4">
         <input type="file" accept=".xlsx,.xls,.csv" onChange={onFile} className="text-sm" />
         {rows.length > 0 && (

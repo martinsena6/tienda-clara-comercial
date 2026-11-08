@@ -28,14 +28,32 @@ export function buildWhatsAppMessage(
 }
 
 export function buildWhatsAppUrl(phone: string, message: string): string {
-  return `https://wa.me/${phone.replace(/\D/g, "")}?text=${encodeURIComponent(message)}`;
+  return `https://wa.me/${arWhatsAppPhone(phone)}?text=${encodeURIComponent(message)}`;
+}
+
+export function buildWhatsAppUrls(
+  phone: string,
+  message: string,
+): { urlDirecta: string; urlWeb: string } {
+  const cleanPhone = arWhatsAppPhone(phone);
+  const text = encodeURIComponent(message);
+  return {
+    urlDirecta: `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${text}`,
+    urlWeb: `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${text}`,
+  };
 }
 
 export function arWhatsAppPhone(phone: string): string {
   const digits = phone.replace(/\D/g, "");
-  if (digits.startsWith("549")) return digits;
-  if (digits.startsWith("54")) return `549${digits.slice(2).replace(/^9/, "")}`;
-  return digits.length === 10 ? `549${digits}` : digits;
+  let nationalNumber = digits;
+  if (digits.startsWith("549")) nationalNumber = digits.slice(3);
+  else if (digits.startsWith("54")) nationalNumber = digits.slice(2).replace(/^9/, "");
+
+  if (nationalNumber.startsWith("36215")) {
+    nationalNumber = `362${nationalNumber.slice(5)}`;
+  }
+  if (nationalNumber.length === 10 || digits.startsWith("549")) return `549${nationalNumber}`;
+  return digits;
 }
 
 export interface OrderMessageData {

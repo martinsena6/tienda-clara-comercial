@@ -7,13 +7,18 @@ const productCatalogFields = {
   description: z.string().trim().max(500).optional(),
   featured: z.preprocess((value) => value === "on", z.boolean()),
   badge: z.string().trim().max(40, "La etiqueta puede tener hasta 40 caracteres").optional(),
+  expiration_date: z.preprocess(
+    (value) => (value === "" ? null : value),
+    z.string().date().nullable().optional(),
+  ),
 };
 
 export const productSchema = z
   .object({
     ...productCatalogFields,
     cost: z.coerce.number().min(0, "El costo no puede ser negativo"),
-    min_stock: z.coerce.number().int().min(0),
+    min_stock: z.coerce.number().int().min(0).default(7),
+    initial_stock: z.coerce.number().int().min(0).default(0),
   })
   .refine((v) => v.price >= v.cost, {
     message: "El precio no puede ser menor al costo",
@@ -43,27 +48,6 @@ export const settingsSchema = z.object({
   address: z.string().trim().max(160).optional(),
   hours: z.string().trim().max(160).optional(),
   email: z.string().trim().email("Ingresá un email válido").or(z.literal("")).optional(),
-});
-
-const driveUrl = z
-  .string()
-  .trim()
-  .refine((value) => {
-    if (!value) return true;
-    try {
-      const url = new URL(value);
-      return (
-        url.protocol === "https:" &&
-        (url.hostname === "drive.google.com" || url.hostname === "docs.google.com")
-      );
-    } catch {
-      return false;
-    }
-  }, "Ingresá un enlace seguro de Google Drive");
-
-export const driveLinksSchema = z.object({
-  photos_url: driveUrl,
-  spreadsheets_url: driveUrl,
 });
 
 export const expenseSchema = z.object({

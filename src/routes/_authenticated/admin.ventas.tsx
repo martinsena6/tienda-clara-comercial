@@ -456,6 +456,19 @@ function OrdersTable({
             className: "whitespace-nowrap text-right",
           },
           {
+            header: "Costo",
+            cell: (order) => (order.cost_total > 0 ? formatPrice(order.cost_total) : "—"),
+            className: "whitespace-nowrap text-right",
+            hideOnMobile: true,
+          },
+          {
+            header: "Ganancia",
+            cell: (order) =>
+              order.cost_total > 0 ? formatPrice(order.total - order.cost_total) : "—",
+            className: "whitespace-nowrap text-right",
+            hideOnMobile: true,
+          },
+          {
             header: "Estado",
             cell: (order) => (
               <StatusBadge tone={tone[order.status]}>{orderStatusLabel[order.status]}</StatusBadge>

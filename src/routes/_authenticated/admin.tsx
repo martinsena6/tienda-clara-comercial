@@ -55,11 +55,7 @@ function AdminLayout() {
             </Badge>
             <span className="ml-auto hidden truncate text-sm text-muted-foreground sm:inline">
               {email}{" "}
-              {role === "admin"
-                ? "· Dueño de la app"
-                : role === "propietario_local"
-                  ? "· Dueño/a del local"
-                  : "· Vendedor"}
+              {role === "admin" || role === "propietario_local" ? "· Administrador" : "· Vendedor"}
             </span>
             <Button
               variant="ghost"

@@ -433,6 +433,7 @@ export type Database = {
           cost: number
           created_at: string
           description: string
+          expiration_date: string | null
           featured: boolean
           id: string
           image_url: string
@@ -452,6 +453,7 @@ export type Database = {
           cost?: number
           created_at?: string
           description?: string
+          expiration_date?: string | null
           featured?: boolean
           id?: string
           image_url?: string
@@ -471,6 +473,7 @@ export type Database = {
           cost?: number
           created_at?: string
           description?: string
+          expiration_date?: string | null
           featured?: boolean
           id?: string
           image_url?: string
@@ -709,6 +712,7 @@ export type Database = {
           number: number | null
           status: Database["public"]["Enums"]["order_status"] | null
           total: number | null
+          cost_total: number | null
         }
         Insert: {
           channel?: string | null
@@ -728,6 +732,7 @@ export type Database = {
           number?: number | null
           status?: Database["public"]["Enums"]["order_status"] | null
           total?: number | null
+          cost_total?: number | null
         }
         Update: {
           channel?: string | null
@@ -747,6 +752,7 @@ export type Database = {
           number?: number | null
           status?: Database["public"]["Enums"]["order_status"] | null
           total?: number | null
+          cost_total?: number | null
         }
         Relationships: []
       }
@@ -757,6 +763,7 @@ export type Database = {
           category_id: string | null
           created_at: string | null
           description: string | null
+          expiration_date: string | null
           featured: boolean | null
           id: string | null
           image_url: string | null
@@ -767,6 +774,7 @@ export type Database = {
           slug: string | null
           stock: number | null
           stock_disponible: number | null
+          cost: number | null
           updated_at: string | null
         }
         Insert: {
@@ -775,6 +783,7 @@ export type Database = {
           category_id?: string | null
           created_at?: string | null
           description?: string | null
+          expiration_date?: string | null
           featured?: boolean | null
           id?: string | null
           image_url?: string | null
@@ -785,6 +794,7 @@ export type Database = {
           slug?: string | null
           stock?: number | null
           stock_disponible?: number | null
+          cost?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -793,6 +803,7 @@ export type Database = {
           category_id?: string | null
           created_at?: string | null
           description?: string | null
+          expiration_date?: string | null
           featured?: boolean | null
           id?: string | null
           image_url?: string | null
@@ -803,6 +814,7 @@ export type Database = {
           slug?: string | null
           stock?: number | null
           stock_disponible?: number | null
+          cost?: number | null
           updated_at?: string | null
         }
         Relationships: [
@@ -913,6 +925,7 @@ export type Database = {
           p_price: number
           p_product_id: string | null
           p_slug: string
+          p_expiration_date: string | null
         }
         Returns: string
       }

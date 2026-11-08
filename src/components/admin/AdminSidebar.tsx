@@ -2,19 +2,12 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   BarChart3,
   Boxes,
-  Calculator,
-  ClipboardList,
   LayoutDashboard,
-  Images,
   Package,
   PackageSearch,
   Settings,
   ShoppingBag,
   Store,
-  Tags,
-  Truck,
-  Users,
-  UserRound,
   Wallet,
 } from "lucide-react";
 import {
@@ -37,38 +30,31 @@ interface Item {
   url: string;
   icon: typeof LayoutDashboard;
   adminOnly?: boolean;
-  ownerOnly?: boolean;
 }
 
 const groups: { label: string; items: Item[] }[] = [
-  { label: "General", items: [{ title: "Inicio", url: "/admin", icon: LayoutDashboard }] },
   {
-    label: "Inventario",
+    label: "General",
+    items: [{ title: "Inicio / Rentabilidad", url: "/admin", icon: BarChart3 }],
+  },
+  {
+    label: "Catálogo y Stock",
     items: [
       { title: "Productos", url: "/admin/productos", icon: Package },
-      { title: "Banners", url: "/admin/banners", icon: Images, adminOnly: true },
-      { title: "Stock", url: "/admin/stock", icon: Boxes },
-      { title: "Conteo físico", url: "/admin/inventario", icon: ClipboardList, adminOnly: true },
+      { title: "Stock y Vencimientos", url: "/admin/stock", icon: Boxes },
       { title: "Reposición", url: "/admin/reposicion", icon: PackageSearch, adminOnly: true },
-      { title: "Costos", url: "/admin/costos", icon: Tags, adminOnly: true },
-      { title: "Precios", url: "/admin/precios", icon: Calculator, adminOnly: true },
     ],
   },
   {
     label: "Operaciones",
     items: [
-      { title: "Ventas", url: "/admin/ventas", icon: ShoppingBag },
-      { title: "Venta en el local", url: "/admin/mostrador", icon: Store },
-      { title: "Compras", url: "/admin/compras", icon: Truck, adminOnly: true },
+      { title: "Ventas (Pedidos)", url: "/admin/ventas", icon: ShoppingBag },
       { title: "Gastos", url: "/admin/gastos", icon: Wallet, adminOnly: true },
-      { title: "Rentabilidad", url: "/admin/rentabilidad", icon: BarChart3, adminOnly: true },
     ],
   },
   {
-    label: "Negocio",
+    label: "Sistema",
     items: [
-      { title: "Mi perfil", url: "/admin/perfil", icon: UserRound },
-      { title: "Usuarios", url: "/admin/usuarios", icon: Users, ownerOnly: true },
       { title: "Configuración", url: "/admin/configuracion", icon: Settings, adminOnly: true },
     ],
   },
@@ -76,7 +62,7 @@ const groups: { label: string; items: Item[] }[] = [
 
 export function AdminSidebar() {
   const name = useQuery(settingsQuery).data?.name ?? DEFAULT_SETTINGS.name;
-  const { isAdmin, isAppOwner } = useMyRole();
+  const { isAdmin } = useMyRole();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const isActive = (url: string) =>
     url === "/admin" ? path === "/admin" || path === "/admin/" : path.startsWith(url);
@@ -96,9 +82,7 @@ export function AdminSidebar() {
       </SidebarHeader>
       <SidebarContent>
         {groups.map((g) => {
-          const items = g.items.filter(
-            (i) => (!i.adminOnly || isAdmin) && (!i.ownerOnly || isAppOwner),
-          );
+          const items = g.items.filter((i) => !i.adminOnly || isAdmin);
           if (items.length === 0) return null;
           return (
             <SidebarGroup key={g.label}>

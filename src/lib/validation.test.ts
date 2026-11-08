@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { driveLinksSchema, productCatalogSchema } from "./validation";
+import { productCatalogSchema, productSchema } from "./validation";
 
 describe("validación del catálogo para vendedor", () => {
   it("permite cargar un producto sin pedir costo ni proveedor", () => {
@@ -15,18 +15,18 @@ describe("validación del catálogo para vendedor", () => {
     ).toBe(true);
   });
 
-  it("valida enlaces Drive seguros y rechaza otros destinos", () => {
-    expect(
-      driveLinksSchema.safeParse({
-        photos_url: "https://drive.google.com/drive/folders/fotos",
-        spreadsheets_url: "https://docs.google.com/spreadsheets/d/costos",
-      }).success,
-    ).toBe(true);
-    expect(
-      driveLinksSchema.safeParse({
-        photos_url: "http://drive.google.com/folder",
-        spreadsheets_url: "https://example.com/costos",
-      }).success,
-    ).toBe(false);
+  it("usa siete como mínimo e inicializa el stock solicitado", () => {
+    const parsed = productSchema.safeParse({
+      name: "Gomitas",
+      category_id: "golosinas",
+      price: "190",
+      cost: "100",
+      featured: "on",
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.min_stock).toBe(7);
+      expect(parsed.data.initial_stock).toBe(0);
+    }
   });
 });

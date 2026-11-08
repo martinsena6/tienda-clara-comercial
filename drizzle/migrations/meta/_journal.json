@@ -85,6 +85,20 @@
       "when": 1794087800000,
       "tag": "0011_catalogo_vendedor_y_links_drive",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794087900000,
+      "tag": "0012_rentabilidad_vendedor_y_vencimientos",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794088000000,
+      "tag": "0013_reposicion_siete_unidades",
+      "breakpoints": true
     }
   ]
 }

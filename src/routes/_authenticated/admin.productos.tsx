@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Camera, Check, ExternalLink, Pencil, Plus, Upload } from "lucide-react";
+import { Camera, Check, Pencil, Plus, Upload } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
@@ -11,23 +11,23 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { DataTable } from "@/components/admin/DataTable";
 import { FormField } from "@/components/admin/FormField";
 import { PageHeader } from "@/components/admin/PageHeader";
-import { AvailabilityBadge } from "@/components/shared/AvailabilityBadge";
 import { ProductImage } from "@/components/catalog/ProductImage";
-import { getAvailability, marginPct } from "@/lib/domain/catalog";
+import { marginPct } from "@/lib/domain/catalog";
 import {
   adminProductsQuery,
   categoriesQuery,
   comboItemsQuery,
   copyComboRecipe,
   createProduct,
+  adjustStock,
   deleteProductImage,
-  driveLinksQuery,
   errorMessage,
   linkProductPhotos,
   normalizeName,
   saveComboRecipe,
   setProductActive,
   updateProductInternals,
+  suppliersQuery,
   updateProductPhoto,
   uploadBulkProductImages,
   useMyRole,
@@ -63,6 +63,7 @@ function ProductForm({
 }) {
   const qc = useQueryClient();
   const categories = useQuery(categoriesQuery).data ?? [];
+  const suppliers = useQuery({ ...suppliersQuery, enabled: isAdmin }).data ?? [];
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [image, setImage] = useState(
     product?.image_url?.startsWith("data:") ? "" : (product?.image_url ?? ""),
@@ -70,6 +71,10 @@ function ProductForm({
   const [images, setImages] = useState<string[]>(product?.images ?? []);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [priceValue, setPriceValue] = useState(String(product?.price ?? ""));
+  const [costValue, setCostValue] = useState(String(product?.cost ?? 0));
+  const salePrice = Number(priceValue.replace(",", "."));
+  const unitCost = Number(costValue.replace(",", "."));
 
   const onFiles = async (files: FileList | File[]) => {
     if (!files.length) return;
@@ -108,22 +113,46 @@ function ProductForm({
     setErrors({});
     setBusy(true);
     try {
+      const supplier = String(fd.get("supplier") ?? "").trim();
       const input = {
         name: r.data.name,
         category_id: r.data.category_id,
         price: r.data.price,
         cost: isAdmin ? Number(raw["cost"]) : (product?.cost ?? 0),
-        min_stock: isAdmin ? Number(raw["min_stock"]) : (product?.min_stock ?? 3),
+        min_stock: isAdmin ? 7 : (product?.min_stock ?? 7),
+        supplier: isAdmin ? supplier : "",
         description: r.data.description ?? "",
         image_url: image,
         image_urls: images,
         featured: r.data.featured,
         badge: r.data.badge ?? "",
+        expiration_date: r.data.expiration_date ?? null,
       };
-      const supplier = String(fd.get("supplier") ?? "").trim();
+      let newProductId: string | null = null;
       if (product) await updateProduct(product.id, input, isAdmin);
-      else await createProduct({ ...input, slug: slugify(input.name) }, isAdmin);
+      else {
+        newProductId = await createProduct(
+          {
+            ...input,
+            initial_stock: isAdmin ? Number(raw["initial_stock"] ?? 0) : 0,
+            slug: slugify(input.name),
+          },
+          isAdmin,
+        );
+      }
       if (product && isAdmin) await updateProductInternals(product.id, { supplier });
+      if (newProductId && isAdmin && Number(raw["initial_stock"] ?? 0) > 0) {
+        try {
+          await adjustStock(newProductId, "entrada", Number(raw["initial_stock"]), "Stock inicial");
+        } catch (error) {
+          await qc.invalidateQueries();
+          toast.error(
+            `El producto se creó, pero no se pudo registrar el stock inicial. Cargalo desde Stock. ${errorMessage(error)}`,
+          );
+          onDone();
+          return;
+        }
+      }
       if (product) {
         for (const oldImage of product.images ?? [product.image_url]) {
           if (oldImage && oldImage !== image && !oldImage.startsWith("asset:"))
@@ -242,19 +271,20 @@ function ProductForm({
           </select>
         </FormField>
         <div className="grid grid-cols-2 gap-3">
-          <FormField label="Precio de venta" htmlFor="price" error={errors["price"]}>
+          <FormField label="Precio de Venta (ARS)" htmlFor="price" error={errors["price"]}>
             <Input
               id="price"
               name="price"
               type="number"
               min={0}
               step="any"
-              defaultValue={product?.price}
+              value={priceValue}
+              onChange={(event) => setPriceValue(event.target.value)}
             />
           </FormField>
           {isAdmin && (
             <FormField
-              label="Costo"
+              label="Costo unitario (ARS)"
               htmlFor="cost"
               hint="Interno, no se publica"
               error={errors["cost"]}
@@ -265,32 +295,102 @@ function ProductForm({
                 type="number"
                 min={0}
                 step="any"
-                defaultValue={product?.cost ?? 0}
+                value={costValue}
+                onChange={(event) => setCostValue(event.target.value)}
               />
             </FormField>
           )}
         </div>
         {isAdmin && (
-          <FormField label="Proveedor" htmlFor="supplier" hint="Interno, no se publica">
-            <Input id="supplier" name="supplier" defaultValue={product?.supplier ?? ""} />
-          </FormField>
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3 text-sm">
+            <span>
+              Recargo sugerido: 90% sobre el costo · Venta:{" "}
+              {unitCost > 0 ? formatPrice(Math.round(unitCost * 1.9 * 100) / 100) : "—"}
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={!Number.isFinite(unitCost) || unitCost <= 0}
+              onClick={() => setPriceValue(String(Math.round(unitCost * 1.9 * 100) / 100))}
+            >
+              Usar este precio
+            </Button>
+          </div>
         )}
-        {isAdmin && (
-          <FormField
-            label="Stock mínimo"
-            htmlFor="min_stock"
-            hint="El stock se carga desde la sección Stock"
-            error={errors["min_stock"]}
-          >
+        {!isAdmin && (
+          <FormField label="Costo unitario (ARS)" htmlFor="cost-display">
             <Input
-              id="min_stock"
-              name="min_stock"
-              type="number"
-              min={0}
-              defaultValue={product?.min_stock ?? 0}
+              id="cost-display"
+              value={
+                product?.cost && product.cost > 0 ? formatPrice(product.cost) : "Sin costo cargado"
+              }
+              readOnly
             />
           </FormField>
         )}
+        {salePrice > 0 && unitCost > 0 && (
+          <p className="rounded-md bg-muted px-3 py-2 text-sm">
+            Ganancia estimada: {formatPrice(salePrice - unitCost)} · Margen:{" "}
+            {marginPct(salePrice, unitCost)}%
+          </p>
+        )}
+        <FormField label="Fecha de vencimiento" htmlFor="expiration_date">
+          <Input
+            id="expiration_date"
+            name="expiration_date"
+            type="date"
+            defaultValue={product?.expiration_date ?? ""}
+          />
+        </FormField>
+        {isAdmin && (
+          <FormField
+            label="Proveedor"
+            htmlFor="supplier"
+            hint="Interno, no se publica. Registrá el teléfono en Compras para habilitar el pedido por WhatsApp."
+          >
+            <select
+              id="supplier"
+              name="supplier"
+              defaultValue={product?.supplier ?? ""}
+              className="h-9 w-full rounded-md border bg-card px-3 text-sm"
+            >
+              <option value="">Sin proveedor</option>
+              {product?.supplier && !suppliers.some((entry) => entry.name === product.supplier) && (
+                <option value={product.supplier}>{product.supplier} (actual)</option>
+              )}
+              {suppliers.map((entry) => (
+                <option key={entry.id} value={entry.name}>
+                  {entry.name}
+                </option>
+              ))}
+            </select>
+            <a href="/admin/compras" className="mt-1 inline-block text-xs text-primary underline">
+              Agregar proveedor o teléfono
+            </a>
+          </FormField>
+        )}
+        <input type="hidden" name="min_stock" value="7" />
+        {isAdmin && !product && (
+          <FormField
+            label="Stock inicial"
+            htmlFor="initial_stock"
+            hint="Se registra como movimiento de entrada para mantener el historial."
+            error={errors["initial_stock"]}
+          >
+            <Input
+              id="initial_stock"
+              name="initial_stock"
+              type="number"
+              min={0}
+              step={1}
+              defaultValue={0}
+            />
+          </FormField>
+        )}
+        <p className="text-xs text-muted-foreground">
+          La reposición se sugiere cuando quedan 7 unidades o menos.
+        </p>
         <FormField label="Descripción" htmlFor="description">
           <Textarea
             id="description"
@@ -642,6 +742,8 @@ function hasPhoto(product: PanelProduct) {
 function CostCell({ p }: { p: PanelProduct }) {
   const qc = useQueryClient();
   const [v, setV] = useState(p.cost && p.cost > 0 ? String(p.cost) : "");
+  const [recalculatePrice, setRecalculatePrice] = useState(false);
+  const [saving, setSaving] = useState(false);
   const save = async () => {
     const n = v.trim() === "" ? 0 : Number(v.replace(",", "."));
     if (!Number.isFinite(n) || n < 0) {
@@ -649,34 +751,68 @@ function CostCell({ p }: { p: PanelProduct }) {
       return;
     }
     if (n === (p.cost ?? 0)) return;
+    if (recalculatePrice && n <= 0) {
+      toast.error("Ingresá un costo mayor a cero para recalcular el precio de venta");
+      return;
+    }
+    setSaving(true);
     try {
-      await updateProductInternals(p.id, { cost: n });
+      await updateProductInternals(p.id, {
+        cost: n,
+        ...(recalculatePrice ? { price: Math.round(n * 1.9 * 100) / 100 } : {}),
+      });
       await qc.invalidateQueries({ queryKey: ["admin-products"] });
-      toast.success("Costo guardado");
+      toast.success(recalculatePrice ? "Costo y precio de venta actualizados" : "Costo guardado");
     } catch (e) {
       toast.error(errorMessage(e));
+    } finally {
+      setSaving(false);
     }
   };
   return (
-    <Input
-      aria-label={`Costo de ${p.name}`}
-      className="h-8 w-24 text-right"
-      inputMode="decimal"
-      placeholder="Sin costo"
-      value={v}
-      onChange={(e) => setV(e.target.value)}
-      onBlur={save}
-      onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()}
-    />
+    <div className="flex min-w-36 flex-col items-end gap-1">
+      <Input
+        aria-label={`Costo de ${p.name}`}
+        className="h-8 w-24 text-right"
+        inputMode="decimal"
+        placeholder="Sin costo"
+        value={v}
+        onChange={(e) => setV(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && void save()}
+      />
+      <label className="flex items-center gap-1 whitespace-nowrap text-[10px] text-muted-foreground">
+        <input
+          type="checkbox"
+          checked={recalculatePrice}
+          onChange={(event) => setRecalculatePrice(event.target.checked)}
+        />
+        Venta costo +90%
+      </label>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={saving}
+        className="h-7 px-2 text-xs"
+        onClick={() => void save()}
+      >
+        Guardar
+      </Button>
+    </div>
   );
 }
 
 function Productos() {
   const qc = useQueryClient();
-  const { data: products, isLoading, isAdmin } = usePanelProducts();
+  const {
+    data: products,
+    error: productsError,
+    warning: productsWarning,
+    isLoading,
+    isAdmin,
+  } = usePanelProducts();
   const { isStaff } = useMyRole();
   const categories = useQuery(categoriesQuery).data ?? [];
-  const driveLinks = useQuery({ ...driveLinksQuery, enabled: isStaff });
   const [editing, setEditing] = useState<PanelProduct | null | undefined>(undefined);
   const [status, setStatus] = useState<"activos" | "ocultos" | "todos">("activos");
   const [cat, setCat] = useState("");
@@ -742,13 +878,6 @@ function Productos() {
         description="Los productos no se borran: se ocultan de la tienda."
         actions={
           <div className="flex flex-wrap gap-2">
-            {driveLinks.data?.photos_url && (
-              <Button asChild variant="outline">
-                <a href={driveLinks.data.photos_url} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink /> Abrir Drive de Fotos
-                </a>
-              </Button>
-            )}
             {isStaff && (
               <Button onClick={() => setEditing(null)}>
                 <Plus /> Nuevo producto
@@ -757,11 +886,6 @@ function Productos() {
           </div>
         }
       />
-      {driveLinks.error && (
-        <p role="alert" className="mb-4 text-sm text-destructive">
-          No pudimos cargar el enlace de Drive: {errorMessage(driveLinks.error)}
-        </p>
-      )}
       <Sheet open={editing !== undefined} onOpenChange={(o) => !o && setEditing(undefined)}>
         <SheetContent className="overflow-y-auto">
           <SheetHeader>
@@ -838,7 +962,7 @@ function Productos() {
             <input
               className="sr-only"
               type="file"
-              accept=".webp,image/webp"
+              accept="image/*"
               multiple
               disabled={uploadingBulk}
               onChange={(e) => {
@@ -853,104 +977,124 @@ function Productos() {
           </Button>
           {uploadingBulk && <progress className="h-2 w-32" value={bulkProgress} max={100} />}
           <span className="text-xs text-muted-foreground">
-            Usá nombres slug.webp, slug-2.webp y slug-3.webp.
+            Se aceptan imágenes JPG, PNG y WebP. Usá nombres slug, slug-2 y slug-3.
           </span>
         </div>
       )}
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Cargando…</p>
+      ) : productsError ? (
+        <p
+          role="alert"
+          className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"
+        >
+          No se pudieron cargar los productos: {errorMessage(productsError)}
+        </p>
       ) : (
-        <DataTable
-          rows={rows}
-          getKey={(p) => p.id}
-          columns={[
-            {
-              header: "Producto",
-              cell: (p) => (
-                <div className="flex items-center gap-3">
+        <>
+          {productsWarning && (
+            <p
+              role="alert"
+              className="mb-4 rounded-lg border border-warning/40 bg-warning/10 p-4 text-sm"
+            >
+              {productsWarning}
+            </p>
+          )}
+          <DataTable
+            rows={rows}
+            getKey={(p) => p.id}
+            columns={[
+              {
+                header: "Foto",
+                cell: (p) => (
                   <ProductImage
                     src={p.image}
                     alt=""
                     className="size-10 rounded-md"
                     imgClassName="size-10 rounded-md object-cover"
                   />
-                  <div>
-                    <div className="font-medium">{p.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {p.categories?.name ?? "Sin categoría"}
-                      {isAdmin && p.supplier ? ` · ${p.supplier}` : ""}
-                    </div>
-                  </div>
-                </div>
-              ),
-            },
-            {
-              header: "Precio",
-              cell: (p) => formatPrice(p.price),
-              className: "text-right whitespace-nowrap",
-            },
-            ...(isAdmin
-              ? [
-                  {
-                    header: "Costo",
-                    cell: (p: PanelProduct) => <CostCell key={`${p.id}-${p.cost}`} p={p} />,
-                    className: "text-right",
-                    hideOnMobile: true,
-                  },
-                  {
-                    header: "Margen",
-                    cell: (p: PanelProduct) =>
-                      (p.cost ?? 0) > 0 ? (
-                        `${marginPct(p.price, p.cost ?? 0)}%`
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
+                ),
+              },
+              {
+                header: "Nombre",
+                cell: (p) => <span className="font-medium">{p.name}</span>,
+              },
+              {
+                header: "Categoría",
+                cell: (p) => p.categories?.name ?? "Sin categoría",
+                hideOnMobile: true,
+              },
+              {
+                header: "Precio Venta",
+                cell: (p) => formatPrice(p.price),
+                className: "text-right whitespace-nowrap",
+              },
+              {
+                header: "Costo",
+                cell: (p) =>
+                  isAdmin ? (
+                    <CostCell key={`${p.id}-${p.cost}`} p={p} />
+                  ) : p.cost && p.cost > 0 ? (
+                    formatPrice(p.cost)
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  ),
+                className: "text-right whitespace-nowrap",
+                hideOnMobile: true,
+              },
+              {
+                header: "Ganancia",
+                cell: (p) =>
+                  p.cost && p.cost > 0 ? (
+                    formatPrice(p.price - p.cost)
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  ),
+                className: "text-right whitespace-nowrap",
+                hideOnMobile: true,
+              },
+              {
+                header: "Stock",
+                cell: (p) => p.stock_disponible,
+                className: "text-right",
+              },
+              {
+                header: "Visible en la tienda",
+                cell: (p) => (
+                  <Switch
+                    checked={p.active}
+                    disabled={!isStaff}
+                    aria-label={`Visible en la tienda: ${p.name}`}
+                    onCheckedChange={(v) => toggle(p, v)}
+                  />
+                ),
+              },
+              ...(isStaff
+                ? [
+                    {
+                      header: "Fotos",
+                      cell: (p: PanelProduct) => (
+                        <ProductPhotoButton product={p} isAdmin={isAdmin} />
                       ),
-                    className: "text-right",
-                    hideOnMobile: true,
-                  },
-                ]
-              : []),
-            {
-              header: "Disponibilidad",
-              cell: (p) => (
-                <AvailabilityBadge value={getAvailability(p.stock_disponible, p.min_stock)} />
-              ),
-              hideOnMobile: true,
-            },
-            {
-              header: "Visible en la tienda",
-              cell: (p) => (
-                <Switch
-                  checked={p.active}
-                  disabled={!isStaff}
-                  aria-label={`Visible en la tienda: ${p.name}`}
-                  onCheckedChange={(v) => toggle(p, v)}
-                />
-              ),
-            },
-            ...(isStaff
-              ? [
-                  {
-                    header: "Fotos",
-                    cell: (p: PanelProduct) => <ProductPhotoButton product={p} isAdmin={isAdmin} />,
-                  },
-                  {
-                    header: "Editar",
-                    cell: (p: PanelProduct) => (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        aria-label="Editar"
-                        onClick={() => setEditing(p)}
-                      >
-                        <Pencil />
-                      </Button>
-                    ),
-                  },
-                ]
-              : []),
-          ]}
-        />
+                    },
+                    {
+                      header: "Editar",
+                      cell: (p: PanelProduct) => (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          aria-label="Editar"
+                          onClick={() => setEditing(p)}
+                        >
+                          <Pencil />
+                        </Button>
+                      ),
+                    },
+                  ]
+                : []),
+            ]}
+          />
+        </>
       )}
       {pages > 1 && (
         <div className="mt-4 flex items-center justify-center gap-3 text-sm">

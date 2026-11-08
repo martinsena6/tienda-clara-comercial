@@ -304,34 +304,37 @@ export function useMyRole() {
   };
 }
 
-// Productos: el admin lee la tabla completa (con costos); el vendedor lee la vista sin costos.
+// Los vendedores reciben costos solo mediante la vista de personal, nunca desde la tabla products.
+async function fetchAdminProducts() {
+  const [productsResult, stockResult] = await Promise.all([
+    supabase.from("products").select("*, categories(name)").order("name"),
+    supabase.from("products_staff").select("id, stock_disponible"),
+  ]);
+  if (productsResult.error) throw productsResult.error;
+  const effectiveStockById = new Map(
+    (stockResult.data ?? [])
+      .filter((row) => row.id !== null)
+      .map((row) => [row.id!, row.stock_disponible ?? 0]),
+  );
+  return productsResult.data.map((p) => ({
+    ...p,
+    price: Number(p.price),
+    cost: Number(p.cost),
+    stock_disponible: effectiveStockById.get(p.id) ?? p.stock,
+    stock_calculation_available: !stockResult.error,
+    image: resolveImage(p.image_url),
+    images: imageUrlList(p.image_urls),
+    featured: p.featured ?? false,
+    badge: p.badge ?? "",
+    expiration_date: p.expiration_date,
+  }));
+}
+
 export const adminProductsQuery = queryOptions({
   queryKey: ["admin-products"],
-  queryFn: async () => {
-    const [productsResult, stockResult] = await Promise.all([
-      supabase.from("products").select("*, categories(name)").order("name"),
-      supabase.from("products_staff").select("id, stock_disponible"),
-    ]);
-    if (productsResult.error) throw productsResult.error;
-    if (stockResult.error) throw stockResult.error;
-    const effectiveStockById = new Map(
-      (stockResult.data ?? [])
-        .filter((row) => row.id !== null)
-        .map((row) => [row.id!, row.stock_disponible ?? 0]),
-    );
-    return productsResult.data.map((p) => ({
-      ...p,
-      price: Number(p.price),
-      cost: Number(p.cost),
-      stock_disponible: effectiveStockById.get(p.id) ?? p.stock,
-      image: resolveImage(p.image_url),
-      images: imageUrlList(p.image_urls),
-      featured: p.featured ?? false,
-      badge: p.badge ?? "",
-    }));
-  },
+  queryFn: fetchAdminProducts,
 });
-export type AdminProduct = Awaited<ReturnType<typeof adminProductsQuery.queryFn & {}>>[number];
+export type AdminProduct = Awaited<ReturnType<typeof fetchAdminProducts>>[number];
 
 export const priceHistoryQuery = queryOptions({
   queryKey: ["price-history"],
@@ -383,14 +386,22 @@ export async function undoPriceBatch(batchId: string) {
 }
 
 export const replenishmentQuery = queryOptions({
-  queryKey: ["replenishment-suggestions", 30, 21],
+  queryKey: ["replenishment-suggestions", 7],
   queryFn: async () => {
-    const { data, error } = await supabase.rpc("replenishment_suggestions", {
-      p_days: 30,
-      p_cover_days: 21,
-    });
-    if (error) throw error;
-    return data ?? [];
+    const products = await fetchAdminProducts();
+    return products
+      .filter((product) => product.active && product.stock_disponible <= 7)
+      .map((product) => {
+        const supplier = product.supplier?.trim() ?? "";
+        return {
+          product_id: product.id,
+          name: product.name,
+          stock: product.stock_disponible,
+          min_stock: 7,
+          supplier: normalizeName(supplier) === "a definir" ? "" : supplier,
+          sugerido: Math.max(0, 7 - product.stock_disponible),
+        };
+      });
   },
 });
 
@@ -430,6 +441,8 @@ export const staffProductsQuery = queryOptions({
       featured: p.featured ?? false,
       badge: p.badge ?? "",
       stock_disponible: p.stock_disponible ?? p.stock ?? 0,
+      cost: Number(p.cost ?? 0),
+      expiration_date: p.expiration_date ?? null,
       categories: p.categories as { name: string } | null,
     }));
   },
@@ -507,7 +520,7 @@ export interface OrderItemRow {
   unit_cost?: number;
 }
 
-// Pedidos: el admin lee la tabla (con costos congelados); el vendedor lee la vista sin costos.
+// La vista de personal incluye costos congelados para los roles autorizados del panel.
 export const ordersQuery = queryOptions({
   queryKey: ["orders"],
   queryFn: async () => {
@@ -543,6 +556,7 @@ export const staffOrdersQuery = queryOptions({
       customer_phone: o.customer_phone ?? "",
       items: (o.items as unknown as OrderItemRow[] | null) ?? [],
       total: Number(o.total ?? 0),
+      cost_total: Number(o.cost_total ?? 0),
       status: o.status ?? "pendiente",
       channel: o.channel ?? "whatsapp",
       created_at: o.created_at ?? "",
@@ -790,19 +804,22 @@ export interface ProductInput {
   price: number;
   cost: number;
   min_stock: number;
+  supplier?: string;
+  initial_stock?: number;
   description: string;
   image_url?: string;
   image_urls?: string[];
   featured?: boolean;
   badge?: string;
+  expiration_date?: string | null;
 }
 
 export async function createProduct(
   input: ProductInput & { slug: string; image_url: string },
   includeInternals = true,
-) {
+): Promise<string> {
   if (!includeInternals) {
-    const { error } = await supabase.rpc("save_staff_catalog_product", {
+    const { data, error } = await supabase.rpc("save_staff_catalog_product", {
       p_product_id: null,
       p_slug: input.slug,
       p_name: input.name,
@@ -813,25 +830,34 @@ export async function createProduct(
       p_image_urls: input.image_urls ?? [],
       p_featured: input.featured ?? false,
       p_badge: input.badge ?? "",
+      p_expiration_date: input.expiration_date ?? null,
     });
     if (error) throw error;
-    return;
+    if (!data) throw new Error("No se pudo identificar el producto creado");
+    return data;
   }
 
-  const { error } = await supabase.from("products").insert({
-    slug: input.slug,
-    name: input.name,
-    category_id: input.category_id,
-    price: input.price,
-    cost: input.cost,
-    min_stock: input.min_stock,
-    description: input.description,
-    image_url: input.image_url,
-    image_urls: input.image_urls ?? [],
-    featured: input.featured ?? false,
-    badge: input.badge ?? "",
-  });
+  const { data, error } = await supabase
+    .from("products")
+    .insert({
+      slug: input.slug,
+      name: input.name,
+      category_id: input.category_id,
+      price: input.price,
+      cost: input.cost,
+      supplier: input.supplier ?? "",
+      min_stock: input.min_stock,
+      description: input.description,
+      image_url: input.image_url,
+      image_urls: input.image_urls ?? [],
+      featured: input.featured ?? false,
+      badge: input.badge ?? "",
+      expiration_date: input.expiration_date ?? null,
+    })
+    .select("id")
+    .single();
   if (error) throw error;
+  return data.id;
 }
 
 export async function updateProduct(
@@ -851,6 +877,7 @@ export async function updateProduct(
       p_image_urls: input.image_urls ?? [],
       p_featured: input.featured ?? false,
       p_badge: input.badge ?? "",
+      p_expiration_date: input.expiration_date ?? null,
     });
     if (error) throw error;
     return;
@@ -868,6 +895,7 @@ export async function updateProduct(
       image_urls: input.image_urls ?? [],
       featured: input.featured ?? false,
       badge: input.badge ?? "",
+      expiration_date: input.expiration_date ?? null,
     })
     .eq("id", id);
   if (error) throw error;
@@ -891,7 +919,7 @@ export async function setProductActive(id: string, active: boolean, includeInter
 /** Edición en línea de costo y proveedor (solo admin). */
 export async function updateProductInternals(
   id: string,
-  input: { cost?: number; supplier?: string },
+  input: { cost?: number; price?: number; supplier?: string },
 ) {
   const { error } = await supabase.from("products").update(input).eq("id", id);
   if (error) throw error;
@@ -912,26 +940,6 @@ export async function saveSettings(values: SettingsInput) {
     .from("business_settings")
     .update({ ...values, updated_at: new Date().toISOString() })
     .eq("id", 1);
-  if (error) throw error;
-}
-
-export const driveLinksQuery = queryOptions({
-  queryKey: ["business-drive-links"],
-  queryFn: async () => {
-    const { data, error } = await supabase
-      .from("business_drive_links")
-      .select("photos_url, spreadsheets_url")
-      .eq("id", 1)
-      .maybeSingle();
-    if (error) throw error;
-    return data ?? { photos_url: "", spreadsheets_url: "" };
-  },
-});
-
-export async function saveDriveLinks(values: { photos_url: string; spreadsheets_url: string }) {
-  const { error } = await supabase
-    .from("business_drive_links")
-    .upsert({ id: 1, ...values, updated_at: new Date().toISOString() }, { onConflict: "id" });
   if (error) throw error;
 }
 
@@ -1092,7 +1100,15 @@ async function compressProductImage(file: File): Promise<File> {
         0.82,
       );
     });
-    const baseName = file.name.replace(/\.[^.]+$/, "") || "producto";
+    const baseName =
+      file.name
+        .replace(/\.[^.]+$/, "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9-]+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "") || "producto";
     return new File([blob], `${baseName}.webp`, { type: "image/webp" });
   } finally {
     bitmap.close();
@@ -1120,18 +1136,22 @@ export async function uploadBulkProductImages(
   files: File[],
   onProgress?: (progress: UploadProgress) => void,
 ): Promise<void> {
-  if (files.some((file) => !/\.webp$/i.test(file.name))) {
-    throw new Error("Todas las fotos deben ser archivos .webp");
-  }
   const bucket = supabase.storage.from("productos");
   for (const [index, file] of files.entries()) {
     onProgress?.({
       completed: index,
       total: files.length,
       percent: Math.round((index / files.length) * 100),
+      phase: "compressing",
+    });
+    const compressed = await compressProductImage(file);
+    onProgress?.({
+      completed: index,
+      total: files.length,
+      percent: Math.round((index / files.length) * 100),
       phase: "uploading",
     });
-    const { error } = await bucket.upload(file.name, file, {
+    const { error } = await bucket.upload(compressed.name, compressed, {
       contentType: "image/webp",
       upsert: true,
     });
@@ -1214,12 +1234,13 @@ export interface PanelProduct {
   featured: boolean;
   badge: string;
   categories: { name: string } | null;
-  /** Solo para el admin (undefined para el vendedor). */
+  /** Disponible para el personal autorizado del panel; no se incluye en el catálogo público. */
   cost?: number;
   supplier?: string;
+  expiration_date?: string | null;
 }
 
-/** Productos: el admin lee la tabla; el vendedor la vista sin costos. */
+/** Costos del vendedor llegan exclusivamente desde products_staff. */
 export function usePanelProducts() {
   const { role, isAdmin } = useMyRole();
   const canManageBusiness = role === "admin" || role === "propietario_local";
@@ -1228,7 +1249,16 @@ export function usePanelProducts() {
   const data: PanelProduct[] = isAdmin
     ? (a.data ?? []).map((p) => ({ ...p, categories: p.categories as { name: string } | null }))
     : (s.data ?? []);
-  return { data, isLoading: role === undefined || (isAdmin ? a.isLoading : s.isLoading), isAdmin };
+  return {
+    data,
+    error: isAdmin ? a.error : s.error,
+    warning:
+      isAdmin && a.data?.some((product) => !product.stock_calculation_available)
+        ? "No se pudo calcular el stock real de los combos. Se muestra el stock manual hasta aplicar la migración de base de datos."
+        : null,
+    isLoading: role === undefined || (isAdmin ? a.isLoading : s.isLoading),
+    isAdmin,
+  };
 }
 
 export interface PanelOrder {
@@ -1238,6 +1268,7 @@ export interface PanelOrder {
   customer_phone: string;
   items: OrderItemRow[];
   total: number;
+  cost_total: number;
   status: "pendiente" | "confirmado" | "cancelado";
   channel: string;
   created_at: string;

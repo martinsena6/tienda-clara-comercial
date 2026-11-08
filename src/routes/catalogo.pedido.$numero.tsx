@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { CatalogLayout, useSettings } from "@/components/catalog/CatalogLayout";
 import { useCart } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
-import { buildOrderMessage, buildWhatsAppUrl } from "@/lib/whatsapp";
+import { buildOrderMessage, buildWhatsAppUrls } from "@/lib/whatsapp";
 
 interface OrderPayload {
   number: number;
@@ -89,7 +89,7 @@ function PedidoRegistrado() {
   }
 
   const message = buildOrderMessage(settings.name, payload);
-  const whatsappUrl = buildWhatsAppUrl(settings.whatsapp, message);
+  const { urlDirecta, urlWeb } = buildWhatsAppUrls(settings.whatsapp, message);
   const copyMessage = async () => {
     try {
       await navigator.clipboard.writeText(message);
@@ -129,17 +129,28 @@ function PedidoRegistrado() {
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <a
-            href={whatsappUrl}
+            href={urlDirecta}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-whatsapp px-4 py-2 text-sm font-medium text-whatsapp-foreground hover:bg-whatsapp/90"
           >
-            <MessageCircle className="size-4" /> Enviar por WhatsApp
+            <MessageCircle className="size-4" /> Abrir en WhatsApp
           </a>
           <Button variant="outline" onClick={copyMessage}>
-            <Copy /> Copiar mensaje
+            <Copy /> Copiar mensaje al portapapeles
           </Button>
         </div>
+        <p className="mt-3 text-center text-sm text-muted-foreground">
+          ¿Abrir en WhatsApp Web desde la compu?{" "}
+          <a
+            href={urlWeb}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-primary underline"
+          >
+            Abrir WhatsApp Web
+          </a>
+        </p>
       </section>
     </CatalogLayout>
   );
