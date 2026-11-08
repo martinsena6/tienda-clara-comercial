@@ -14,7 +14,7 @@ describe("enlaces de WhatsApp argentinos", () => {
   it("quita el 15 y genera enlaces directo y web", () => {
     expect(arWhatsAppPhone("+54 9 362 15 5436293")).toBe("5493625436293");
     const urls = buildWhatsAppUrls("+54 362 15 5436293", "Hola Festiva");
-    expect(urls.urlDirecta).toContain("https://api.whatsapp.com/send?phone=5493625436293&text=");
+    expect(urls.urlDirecta).toContain("https://wa.me/5493625436293?text=");
     expect(urls.urlWeb).toContain("https://web.whatsapp.com/send?phone=5493625436293&text=");
   });
 });

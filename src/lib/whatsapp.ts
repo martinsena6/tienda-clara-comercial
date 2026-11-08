@@ -38,7 +38,7 @@ export function buildWhatsAppUrls(
   const cleanPhone = arWhatsAppPhone(phone);
   const text = encodeURIComponent(message);
   return {
-    urlDirecta: `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${text}`,
+    urlDirecta: `https://wa.me/${cleanPhone}?text=${text}`,
     urlWeb: `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${text}`,
   };
 }
