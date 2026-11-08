@@ -1,6 +1,9 @@
 // Acceso a los datos guardados (fuente única de productos, precios y configuración).
 import { queryOptions, useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase as typedSupabase } from "@/integrations/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
+// Algunas tablas/funciones del código todavía no figuran en los tipos generados.
+const supabase = typedSupabase as unknown as SupabaseClient;
 import type { Availability, PublicProduct } from "./domain/types";
 import combo_misky_10 from "@/assets/combo-misky-10.jpg.asset.json";
 import combo_misky_20 from "@/assets/combo-misky-20.jpg.asset.json";
