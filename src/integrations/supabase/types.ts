@@ -1,4 +1,10 @@
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
@@ -158,27 +164,6 @@ export type Database = {
         }
         Relationships: []
       }
-      business_drive_links: {
-        Row: {
-          id: number
-          photos_url: string
-          spreadsheets_url: string
-          updated_at: string
-        }
-        Insert: {
-          id?: number
-          photos_url?: string
-          spreadsheets_url?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: number
-          photos_url?: string
-          spreadsheets_url?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       categories: {
         Row: {
           id: string
@@ -225,55 +210,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "combo_items_combo_id_fkey"
+            columns: ["combo_id"]
+            isOneToOne: false
+            referencedRelation: "products_staff"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "combo_items_component_id_fkey"
             columns: ["component_id"]
             isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "combo_items_component_id_fkey"
+            columns: ["component_id"]
+            isOneToOne: false
+            referencedRelation: "products_staff"
+            referencedColumns: ["id"]
+          },
         ]
-      }
-      customer_profiles: {
-        Row: {
-          city: string
-          full_name: string
-          neighborhood: string
-          phone: string
-          postal_code: string
-          province: string
-          street: string
-          street_number: string
-          unit: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          city?: string
-          full_name?: string
-          neighborhood?: string
-          phone?: string
-          postal_code?: string
-          province?: string
-          street?: string
-          street_number?: string
-          unit?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          city?: string
-          full_name?: string
-          neighborhood?: string
-          phone?: string
-          postal_code?: string
-          province?: string
-          street?: string
-          street_number?: string
-          unit?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
       }
       expenses: {
         Row: {
@@ -314,7 +271,6 @@ export type Database = {
           customer_email: string
           customer_name: string
           customer_phone: string
-          customer_user_id: string | null
           delivered_at: string | null
           delivery_address: Json
           delivery_method: string
@@ -335,7 +291,6 @@ export type Database = {
           customer_email?: string
           customer_name?: string
           customer_phone?: string
-          customer_user_id?: string | null
           delivered_at?: string | null
           delivery_address?: Json
           delivery_method?: string
@@ -356,7 +311,6 @@ export type Database = {
           customer_email?: string
           customer_name?: string
           customer_phone?: string
-          customer_user_id?: string | null
           delivered_at?: string | null
           delivery_address?: Json
           delivery_method?: string
@@ -628,27 +582,6 @@ export type Database = {
           },
         ]
       }
-      staff_profiles: {
-        Row: {
-          full_name: string
-          phone: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          full_name?: string
-          phone?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          full_name?: string
-          phone?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       suppliers: {
         Row: {
           created_at: string
@@ -697,6 +630,7 @@ export type Database = {
         Row: {
           channel: string | null
           confirmed_at: string | null
+          cost_total: number | null
           created_at: string | null
           customer_email: string | null
           customer_name: string | null
@@ -712,11 +646,11 @@ export type Database = {
           number: number | null
           status: Database["public"]["Enums"]["order_status"] | null
           total: number | null
-          cost_total: number | null
         }
         Insert: {
           channel?: string | null
           confirmed_at?: string | null
+          cost_total?: number | null
           created_at?: string | null
           customer_email?: string | null
           customer_name?: string | null
@@ -727,16 +661,16 @@ export type Database = {
           edited_at?: string | null
           event_date?: string | null
           id?: string | null
-          items?: never
+          items?: Json | null
           notes?: string | null
           number?: number | null
           status?: Database["public"]["Enums"]["order_status"] | null
           total?: number | null
-          cost_total?: number | null
         }
         Update: {
           channel?: string | null
           confirmed_at?: string | null
+          cost_total?: number | null
           created_at?: string | null
           customer_email?: string | null
           customer_name?: string | null
@@ -747,12 +681,11 @@ export type Database = {
           edited_at?: string | null
           event_date?: string | null
           id?: string | null
-          items?: never
+          items?: Json | null
           notes?: string | null
           number?: number | null
           status?: Database["public"]["Enums"]["order_status"] | null
           total?: number | null
-          cost_total?: number | null
         }
         Relationships: []
       }
@@ -761,6 +694,7 @@ export type Database = {
           active: boolean | null
           badge: string | null
           category_id: string | null
+          cost: number | null
           created_at: string | null
           description: string | null
           expiration_date: string | null
@@ -774,13 +708,13 @@ export type Database = {
           slug: string | null
           stock: number | null
           stock_disponible: number | null
-          cost: number | null
           updated_at: string | null
         }
         Insert: {
           active?: boolean | null
           badge?: string | null
           category_id?: string | null
+          cost?: number | null
           created_at?: string | null
           description?: string | null
           expiration_date?: string | null
@@ -793,14 +727,14 @@ export type Database = {
           price?: number | null
           slug?: string | null
           stock?: number | null
-          stock_disponible?: number | null
-          cost?: number | null
+          stock_disponible?: never
           updated_at?: string | null
         }
         Update: {
           active?: boolean | null
           badge?: string | null
           category_id?: string | null
+          cost?: number | null
           created_at?: string | null
           description?: string | null
           expiration_date?: string | null
@@ -813,8 +747,7 @@ export type Database = {
           price?: number | null
           slug?: string | null
           stock?: number | null
-          stock_disponible?: number | null
-          cost?: number | null
+          stock_disponible?: never
           updated_at?: string | null
         }
         Relationships: [
@@ -839,15 +772,6 @@ export type Database = {
         Returns: undefined
       }
       apply_costs: { Args: { p_rows: Json }; Returns: number }
-      consume_product_stock: {
-        Args: {
-          p_product_id: string
-          p_qty: number
-          p_reason: string
-          p_user: string
-        }
-        Returns: undefined
-      }
       apply_price_changes: {
         Args: { p_changes: Json; p_reason?: string }
         Returns: string
@@ -861,6 +785,19 @@ export type Database = {
       confirm_order: {
         Args: { p_allow_negative?: boolean; p_order_id: string }
         Returns: undefined
+      }
+      consume_product_stock: {
+        Args: {
+          p_product_id: string
+          p_qty: number
+          p_reason: string
+          p_user: string
+        }
+        Returns: undefined
+      }
+      copy_combo_recipe: {
+        Args: { p_factor?: number; p_from: string; p_to: string }
+        Returns: number
       }
       create_counter_sale: {
         Args: { p_allow_negative?: boolean; p_items: Json; p_note?: string }
@@ -887,11 +824,13 @@ export type Database = {
           total: number
         }[]
       }
-      copy_combo_recipe: {
-        Args: { p_factor?: number; p_from: string; p_to: string }
-        Returns: number
-      }
       expire_pending_orders: { Args: { p_hours?: number }; Returns: number }
+      get_public_bestsellers: {
+        Args: never
+        Returns: {
+          slug: string
+        }[]
+      }
       get_public_products: {
         Args: never
         Returns: {
@@ -908,35 +847,6 @@ export type Database = {
           slug: string
         }[]
       }
-      get_public_bestsellers: {
-        Args: never
-        Returns: { slug: string }[]
-      }
-      link_product_photos: { Args: { p_base_url: string }; Returns: number }
-      save_staff_catalog_product: {
-        Args: {
-          p_badge: string
-          p_category_id: string
-          p_description: string
-          p_featured: boolean
-          p_image_url: string
-          p_image_urls: Json
-          p_name: string
-          p_price: number
-          p_product_id: string | null
-          p_slug: string
-          p_expiration_date: string | null
-        }
-        Returns: string
-      }
-      set_staff_product_active: {
-        Args: { p_active: boolean; p_product_id: string }
-        Returns: undefined
-      }
-      set_staff_product_photo: {
-        Args: { p_image_url: string; p_image_urls: Json; p_product_id: string }
-        Returns: undefined
-      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -945,22 +855,7 @@ export type Database = {
         Returns: boolean
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
-      customer_order_history: {
-        Args: never
-        Returns: {
-          created_at: string
-          delivery_address: Json
-          delivery_method: string
-          delivered_at: string | null
-          event_date: string | null
-          items: Json
-          notes: string
-          order_id: string
-          order_number: number
-          status: string
-          total: number
-        }[]
-      }
+      link_product_photos: { Args: { p_base_url: string }; Returns: number }
       list_team: {
         Args: never
         Returns: {
@@ -991,13 +886,13 @@ export type Database = {
         Returns: {
           category: string
           cost: number
-          dias_cobertura: number | null
+          dias_cobertura: number
           min_stock: number
           name: string
           product_id: string
           stock: number
           sugerido: number
-          supplier: string | null
+          supplier: string
           unidades_vendidas: number
           venta_diaria: number
         }[]
@@ -1005,6 +900,22 @@ export type Database = {
       round_price: {
         Args: { p_step?: number; p_value: number }
         Returns: number
+      }
+      save_staff_catalog_product: {
+        Args: {
+          p_badge: string
+          p_category_id: string
+          p_description: string
+          p_expiration_date: string
+          p_featured: boolean
+          p_image_url: string
+          p_image_urls: Json
+          p_name: string
+          p_price: number
+          p_product_id: string
+          p_slug: string
+        }
+        Returns: string
       }
       set_user_role: {
         Args: { p_role: string; p_user_id: string }
@@ -1021,7 +932,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "propietario_local" | "vendedor"
+      app_role: "admin" | "vendedor"
       order_status: "pendiente" | "confirmado" | "cancelado"
       stock_movement_type: "entrada" | "salida" | "ajuste"
     }
@@ -1054,8 +965,10 @@ export type Tables<
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -1064,7 +977,8 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -1088,7 +1002,8 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -1112,7 +1027,8 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -1128,7 +1044,8 @@ export type Enums<
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    keyof DefaultSchema["CompositeTypes"] | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
