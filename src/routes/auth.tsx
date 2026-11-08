@@ -83,6 +83,8 @@ function AuthPage() {
           </Button>
         </form>
 
+        <ForgotPassword />
+
         <p className="mt-4 text-center text-sm text-muted-foreground">
           ¿No tenés cuenta? Pedile al dueño que te invite desde el panel.
         </p>
