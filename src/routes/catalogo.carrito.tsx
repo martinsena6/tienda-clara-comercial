@@ -153,7 +153,16 @@ function Carrito() {
       }
       const address =
         c.delivery === "envio"
-          ? [c.street, c.city, c.province, c.postal_code].filter(Boolean).join(", ")
+          ? [
+              [c.street, c.street_number].filter(Boolean).join(" "),
+              c.unit && `Piso/depto ${c.unit}`,
+              c.neighborhood,
+              c.city,
+              c.province,
+              c.postal_code,
+            ]
+              .filter(Boolean)
+              .join(", ")
           : "";
       const payload = {
         number: order.order_number,
@@ -166,10 +175,17 @@ function Carrito() {
         eventDate: c.event_date,
         notes: c.notes.trim(),
       };
+      const orderStorageKey = `festiva-pedido-${order.order_number}`;
+      const serialized = JSON.stringify(payload);
       try {
-        sessionStorage.setItem(`festiva-pedido-${order.order_number}`, JSON.stringify(payload));
+        sessionStorage.setItem(orderStorageKey, serialized);
       } catch {
-        /* sin almacenamiento */
+        /* el respaldo local todavía puede guardar el pedido */
+      }
+      try {
+        localStorage.setItem(orderStorageKey, serialized);
+      } catch {
+        /* el almacenamiento de sesión todavía puede guardar el pedido */
       }
       await navigate({
         to: "/catalogo/pedido/$numero",

@@ -1,6 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { CheckCircle2, Copy, MessageCircle } from "lucide-react";
+import {
+  Calendar,
+  CheckCircle2,
+  Copy,
+  FileText,
+  MapPin,
+  MessageCircle,
+  Phone,
+  User,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { CatalogLayout, useSettings } from "@/components/catalog/CatalogLayout";
@@ -26,16 +35,24 @@ function isOrderPayload(value: unknown, expectedNumber: number): value is OrderP
   return (
     o["number"] === expectedNumber &&
     typeof o["total"] === "number" &&
+    Number.isFinite(o["total"]) &&
     typeof o["name"] === "string" &&
     typeof o["phone"] === "string" &&
     (o["delivery"] === "retiro" || o["delivery"] === "envio") &&
+    typeof o["address"] === "string" &&
+    typeof o["eventDate"] === "string" &&
+    typeof o["notes"] === "string" &&
     Array.isArray(o["items"]) &&
     o["items"].every(
       (item) =>
         item &&
         typeof item.name === "string" &&
         typeof item.quantity === "number" &&
-        typeof item.unit_price === "number",
+        Number.isSafeInteger(item.quantity) &&
+        item.quantity > 0 &&
+        typeof item.unit_price === "number" &&
+        Number.isFinite(item.unit_price) &&
+        item.unit_price >= 0,
     )
   );
 }
@@ -56,21 +73,58 @@ function PedidoRegistrado() {
   const settings = useSettings();
   const { clear } = useCart();
   const [payload, setPayload] = useState<OrderPayload | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     const number = Number(numero);
-    if (!Number.isSafeInteger(number) || number <= 0) return;
+    if (!Number.isSafeInteger(number) || number <= 0) {
+      setLoaded(true);
+      return;
+    }
+
+    const storageKey = `festiva-pedido-${number}`;
+    let raw: string | null = null;
     try {
-      const raw = sessionStorage.getItem(`festiva-pedido-${number}`);
+      raw = sessionStorage.getItem(storageKey);
+    } catch {
+      /* puede usarse el respaldo local */
+    }
+    if (!raw) {
+      try {
+        raw = localStorage.getItem(storageKey);
+      } catch {
+        /* el almacenamiento puede estar deshabilitado */
+      }
+    }
+
+    try {
       if (!raw) return;
       const parsed: unknown = JSON.parse(raw);
-      if (!isOrderPayload(parsed, number)) return;
-      setPayload(parsed);
-      clear();
+      if (isOrderPayload(parsed, number)) {
+        setPayload(parsed);
+        clear();
+      }
     } catch {
       setPayload(null);
+    } finally {
+      try {
+        localStorage.removeItem(storageKey);
+      } catch {
+        /* el almacenamiento puede estar deshabilitado */
+      }
+      setLoaded(true);
     }
   }, [numero, clear]);
+
+  if (!loaded) {
+    return (
+      <CatalogLayout>
+        <p role="status" className="text-center text-sm text-muted-foreground">
+          Cargando los datos del pedido…
+        </p>
+      </CatalogLayout>
+    );
+  }
 
   if (!payload) {
     return (
@@ -127,6 +181,49 @@ function PedidoRegistrado() {
           <span>Total</span>
           <span>{formatPrice(payload.total)}</span>
         </div>
+        <section
+          aria-labelledby="customer-details-heading"
+          className="mb-6 space-y-3 rounded-xl border bg-secondary/40 p-4 text-sm"
+        >
+          <h2 id="customer-details-heading" className="flex items-center gap-2 font-semibold">
+            <User className="size-4 text-primary" /> Datos del cliente y entrega
+          </h2>
+          <div className="grid gap-2 text-muted-foreground sm:grid-cols-2">
+            <p>
+              <span className="font-medium text-foreground">Nombre:</span> {payload.name}
+            </p>
+            <p className="flex items-center gap-1">
+              <Phone className="size-3.5" />
+              <span className="font-medium text-foreground">Celular:</span> {payload.phone}
+            </p>
+            <p className="flex items-start gap-1 sm:col-span-2">
+              <MapPin className="mt-0.5 size-3.5 shrink-0" />
+              <span>
+                <span className="font-medium text-foreground">Entrega:</span>{" "}
+                {payload.delivery === "envio"
+                  ? `Envío a domicilio${payload.address ? ` — ${payload.address}` : ""}`
+                  : "Retiro en el local"}
+              </span>
+            </p>
+            {payload.eventDate && (
+              <p className="flex items-center gap-1 sm:col-span-2">
+                <Calendar className="size-3.5" />
+                <span>
+                  <span className="font-medium text-foreground">Fecha del evento:</span>{" "}
+                  {payload.eventDate}
+                </span>
+              </p>
+            )}
+            {payload.notes && (
+              <p className="flex items-start gap-1 sm:col-span-2">
+                <FileText className="mt-0.5 size-3.5 shrink-0" />
+                <span>
+                  <span className="font-medium text-foreground">Aclaraciones:</span> {payload.notes}
+                </span>
+              </p>
+            )}
+          </div>
+        </section>
         <div className="grid gap-3 sm:grid-cols-2">
           <a
             href={urlDirecta}

@@ -39,7 +39,7 @@ export function buildWhatsAppUrls(
   const text = encodeURIComponent(message);
   return {
     urlDirecta: `https://wa.me/${cleanPhone}?text=${text}`,
-    urlWeb: `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${text}`,
+    urlWeb: `https://wa.me/${cleanPhone}?text=${text}`,
   };
 }
 
