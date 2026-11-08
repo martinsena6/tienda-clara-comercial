@@ -15,6 +15,7 @@ import {
   customerProfileQuery,
   errorMessage,
   saveCustomerProfile,
+  type CustomerOrderHistoryItem,
 } from "@/lib/data";
 import { formatDate, formatPrice } from "@/lib/format";
 
@@ -41,6 +42,21 @@ const EMPTY_PROFILE: ProfileForm = {
   province: "",
   postal_code: "",
 };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isOrderHistoryItem(
+  value: unknown,
+): value is { name?: string; quantity?: number; unit_price?: number } {
+  if (!isRecord(value)) return false;
+  return (
+    (typeof value.name === "string" || value.name === undefined) &&
+    (typeof value.quantity === "number" || value.quantity === undefined) &&
+    (typeof value.unit_price === "number" || value.unit_price === undefined)
+  );
+}
 
 export const Route = createFileRoute("/cuenta")({
   head: () => ({
@@ -465,7 +481,7 @@ function Cuenta() {
             />
           ) : (
             <ul className="divide-y">
-              {(historyQuery.data ?? []).map((order) => {
+              {(historyQuery.data ?? []).map((order: CustomerOrderHistoryItem) => {
                 const status =
                   order.status === "cancelado"
                     ? "Cancelado"
@@ -475,8 +491,15 @@ function Cuenta() {
                         ? "Confirmado"
                         : "Pendiente";
                 const items = Array.isArray(order.items)
-                  ? (order.items as { name?: string; quantity?: number; unit_price?: number }[])
+                  ? order.items.filter(isOrderHistoryItem)
                   : [];
+                const address = isRecord(order.delivery_address)
+                  ? Object.values(order.delivery_address)
+                      .filter(
+                        (value): value is string => typeof value === "string" && Boolean(value),
+                      )
+                      .join(", ")
+                  : "";
                 return (
                   <li key={order.order_id} className="py-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -500,12 +523,7 @@ function Cuenta() {
                       ))}
                     </ul>
                     {order.delivery_method === "envio" && (
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Envío:{" "}
-                        {Object.values(order.delivery_address ?? {})
-                          .filter((value) => typeof value === "string" && value)
-                          .join(", ")}
-                      </p>
+                      <p className="mt-2 text-xs text-muted-foreground">Envío: {address}</p>
                     )}
                   </li>
                 );

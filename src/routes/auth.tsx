@@ -85,7 +85,7 @@ function AuthPage() {
     try {
       if (mode === "forgot" || (mode === "reset" && !recoverySession)) {
         const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-          redirectTo: `${window.location.origin}/auth?mode=reset`,
+          redirectTo: `${window.location.origin}/reset-password`,
         });
         if (err) throw err;
         if (mode === "reset") setMode("forgot");

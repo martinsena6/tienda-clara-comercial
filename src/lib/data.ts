@@ -1,6 +1,9 @@
 // Acceso a los datos guardados (fuente única de productos, precios y configuración).
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
+// Algunas tablas/funciones del código todavía no figuran en los tipos generados.
+const db = supabase as unknown as SupabaseClient;
 import type { Availability, PublicProduct } from "./domain/types";
 import combo_misky_10 from "@/assets/combo-misky-10.jpg.asset.json";
 import combo_misky_20 from "@/assets/combo-misky-20.jpg.asset.json";
@@ -87,7 +90,7 @@ export const customerProfileQuery = queryOptions({
     const { data: userData, error: userError } = await supabase.auth.getUser();
     if (userError) throw userError;
     if (!userData.user) return null;
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("customer_profiles")
       .select("*")
       .eq("user_id", userData.user.id)
@@ -111,12 +114,26 @@ export const customerProfileQuery = queryOptions({
   },
 });
 
+export interface CustomerOrderHistoryItem {
+  order_id: string;
+  order_number: number;
+  created_at: string;
+  status: string;
+  delivered_at: string | null;
+  total: number;
+  items: unknown;
+  delivery_method: string;
+  delivery_address: unknown;
+  event_date: string | null;
+  notes: string | null;
+}
+
 export const customerOrderHistoryQuery = queryOptions({
   queryKey: ["customer-order-history"],
   queryFn: async () => {
-    const { data, error } = await supabase.rpc("customer_order_history");
+    const { data, error } = await db.rpc("customer_order_history");
     if (error) throw error;
-    return data ?? [];
+    return (data ?? []) as CustomerOrderHistoryItem[];
   },
 });
 
@@ -134,7 +151,7 @@ export async function saveCustomerProfile(input: {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError) throw userError;
   if (!userData.user) throw new Error("Iniciá sesión para guardar tus datos");
-  const { error } = await supabase
+  const { error } = await db
     .from("customer_profiles")
     .upsert(
       { ...input, user_id: userData.user.id, updated_at: new Date().toISOString() },
@@ -149,7 +166,7 @@ export const staffProfileQuery = queryOptions({
     const { data: userData, error: userError } = await supabase.auth.getUser();
     if (userError) throw userError;
     if (!userData.user) throw new Error("Iniciá sesión para ver tu perfil");
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("staff_profiles")
       .select("user_id, full_name, phone, updated_at")
       .eq("user_id", userData.user.id)
@@ -168,7 +185,7 @@ export async function saveStaffProfile(input: { full_name: string; phone: string
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError) throw userError;
   if (!userData.user) throw new Error("Iniciá sesión para guardar tu perfil");
-  const { error } = await supabase
+  const { error } = await db
     .from("staff_profiles")
     .upsert(
       { ...input, user_id: userData.user.id, updated_at: new Date().toISOString() },
@@ -282,7 +299,7 @@ export const myRoleQuery = queryOptions({
       email: u.user.email ?? "",
       role: roles.includes("admin")
         ? ("admin" as const)
-        : roles.includes("propietario_local")
+        : (roles as string[]).includes("propietario_local")
           ? ("propietario_local" as const)
           : roles.includes("vendedor")
             ? ("vendedor" as const)
@@ -819,7 +836,7 @@ export async function createProduct(
   includeInternals = true,
 ): Promise<string> {
   if (!includeInternals) {
-    const { data, error } = await supabase.rpc("save_staff_catalog_product", {
+    const { data, error } = await db.rpc("save_staff_catalog_product", {
       p_product_id: null,
       p_slug: input.slug,
       p_name: input.name,
@@ -866,7 +883,7 @@ export async function updateProduct(
   includeInternals = true,
 ) {
   if (!includeInternals) {
-    const { error } = await supabase.rpc("save_staff_catalog_product", {
+    const { error } = await db.rpc("save_staff_catalog_product", {
       p_product_id: id,
       p_slug: "",
       p_name: input.name,
@@ -904,7 +921,7 @@ export async function updateProduct(
 /** Los productos no se borran: se ocultan de la tienda. */
 export async function setProductActive(id: string, active: boolean, includeInternals = true) {
   if (!includeInternals) {
-    const { error } = await supabase.rpc("set_staff_product_active", {
+    const { error } = await db.rpc("set_staff_product_active", {
       p_product_id: id,
       p_active: active,
     });
@@ -1177,7 +1194,7 @@ export async function deleteProductImage(publicUrl: string) {
 
 export async function updateProductPhoto(id: string, imageUrl: string, includeInternals = true) {
   if (!includeInternals) {
-    const { error } = await supabase.rpc("set_staff_product_photo", {
+    const { error } = await db.rpc("set_staff_product_photo", {
       p_product_id: id,
       p_image_url: imageUrl,
       p_image_urls: imageUrl ? [imageUrl] : [],
