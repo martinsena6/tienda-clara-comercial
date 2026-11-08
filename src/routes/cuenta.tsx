@@ -10,9 +10,6 @@ import { Input } from "@/components/ui/input";
 import { CatalogLayout } from "@/components/catalog/CatalogLayout";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { supabase } from "@/integrations/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
-// Algunas tablas/funciones del código todavía no figuran en los tipos generados.
-const db = supabase as unknown as SupabaseClient;
 import {
   customerOrderHistoryQuery,
   customerProfileQuery,
