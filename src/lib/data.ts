@@ -57,21 +57,23 @@ export const publicProductsQuery = queryOptions({
   queryFn: async (): Promise<PublicProduct[]> => {
     const { data, error } = await supabase.rpc("get_public_products");
     if (error) throw error;
-    return (data ?? []).map((p) => ({
-      slug: p.slug,
-      name: p.name,
-      categorySlug: p.category_slug,
-      categoryName: p.category_name,
-      description: p.description,
-      image: resolveImage(p.image_url),
-      images: (Array.isArray(p.image_urls) ? p.image_urls : p.image_url ? [p.image_url] : [])
-        .map((image) => resolveImage(String(image)))
-        .filter(Boolean),
-      price: Number(p.price),
-      availability: p.availability as Availability,
-      featured: Boolean(p.featured),
-      badge: String(p.badge ?? ""),
-    }));
+    return (data ?? [])
+      .filter((p) => Number(p.price) > 0)
+      .map((p) => ({
+        slug: p.slug,
+        name: p.name,
+        categorySlug: p.category_slug,
+        categoryName: p.category_name,
+        description: p.description,
+        image: resolveImage(p.image_url),
+        images: (Array.isArray(p.image_urls) ? p.image_urls : p.image_url ? [p.image_url] : [])
+          .map((image) => resolveImage(String(image)))
+          .filter(Boolean),
+        price: Number(p.price),
+        availability: p.availability as Availability,
+        featured: Boolean(p.featured),
+        badge: String(p.badge ?? ""),
+      }));
   },
 });
 

@@ -29,4 +29,24 @@ describe("validación del catálogo para vendedor", () => {
       expect(parsed.data.initial_stock).toBe(0);
     }
   });
+
+  it("permite guardar productos administrativos sin precio para completarlos luego", () => {
+    const parsed = productSchema.safeParse({
+      name: "Gomitas",
+      category_id: "golosinas",
+      price: "0",
+      cost: "100",
+      featured: "off",
+    });
+
+    expect(parsed.success).toBe(true);
+    expect(
+      productCatalogSchema.safeParse({
+        name: "Gomitas",
+        category_id: "golosinas",
+        price: "0",
+        featured: "off",
+      }).success,
+    ).toBe(false);
+  });
 });

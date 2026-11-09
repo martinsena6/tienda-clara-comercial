@@ -16,11 +16,12 @@ const productCatalogFields = {
 export const productSchema = z
   .object({
     ...productCatalogFields,
+    price: z.coerce.number().min(0, "El precio no puede ser negativo"),
     cost: z.coerce.number().min(0, "El costo no puede ser negativo"),
     min_stock: z.coerce.number().int().min(0).default(7),
     initial_stock: z.coerce.number().int().min(0).default(0),
   })
-  .refine((v) => v.price >= v.cost, {
+  .refine((v) => v.price === 0 || v.price >= v.cost, {
     message: "El precio no puede ser menor al costo",
     path: ["price"],
   });

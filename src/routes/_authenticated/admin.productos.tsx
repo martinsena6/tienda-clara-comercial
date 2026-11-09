@@ -271,7 +271,12 @@ function ProductForm({
           </select>
         </FormField>
         <div className="grid grid-cols-2 gap-3">
-          <FormField label="Precio de Venta (ARS)" htmlFor="price" error={errors["price"]}>
+          <FormField
+            label="Precio de Venta (ARS)"
+            htmlFor="price"
+            hint={isAdmin ? "Con precio $0, el producto queda oculto de la tienda." : undefined}
+            error={errors["price"]}
+          >
             <Input
               id="price"
               name="price"
