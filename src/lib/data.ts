@@ -277,6 +277,15 @@ export const settingsQuery = queryOptions({
   },
 });
 
+export const publicSettingsQuery = queryOptions({
+  queryKey: ["public-settings"],
+  queryFn: async () => {
+    const { data, error } = await supabase.rpc("get_public_business_settings");
+    if (error) throw error;
+    return data?.[0] ?? null;
+  },
+});
+
 export const DEFAULT_SETTINGS = {
   name: "Festiva",
   whatsapp: "5493625436293",
@@ -285,6 +294,15 @@ export const DEFAULT_SETTINGS = {
   address: "Salta 124, Galería Mariana, Local N°1",
   hours: "Lunes a sábado de 9:00 a 12:30 y de 17:30 a 20:30",
   email: "",
+};
+
+export const DEFAULT_PUBLIC_SETTINGS = {
+  name: DEFAULT_SETTINGS.name,
+  whatsapp: DEFAULT_SETTINGS.whatsapp,
+  instagram: DEFAULT_SETTINGS.instagram,
+  tiktok: DEFAULT_SETTINGS.tiktok,
+  address: DEFAULT_SETTINGS.address,
+  hours: DEFAULT_SETTINGS.hours,
 };
 
 // ---------- Panel (requiere sesión; la base controla los permisos) ----------
@@ -908,7 +926,13 @@ export async function updateProduct(
       name: input.name,
       category_id: input.category_id,
       price: input.price,
-      ...(includeInternals ? { cost: input.cost, min_stock: input.min_stock } : {}),
+      ...(includeInternals
+        ? {
+            cost: input.cost,
+            min_stock: input.min_stock,
+            supplier: input.supplier ?? "",
+          }
+        : {}),
       description: input.description,
       image_url: input.image_url,
       image_urls: input.image_urls ?? [],

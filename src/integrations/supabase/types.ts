@@ -831,6 +831,17 @@ export type Database = {
           slug: string
         }[]
       }
+      get_public_business_settings: {
+        Args: never
+        Returns: {
+          address: string
+          hours: string
+          instagram: string
+          name: string
+          tiktok: string
+          whatsapp: string
+        }[]
+      }
       get_public_products: {
         Args: never
         Returns: {

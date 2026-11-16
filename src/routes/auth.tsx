@@ -6,7 +6,10 @@ import { FormField } from "@/components/admin/FormField";
 import { supabase } from "@/integrations/supabase/client";
 import { errorMessage } from "@/lib/data";
 
-type Search = { redirect?: string | undefined };
+type Search = {
+  redirect?: string | undefined;
+  mode?: "reset" | undefined;
+};
 type AuthMode = "login" | "forgot" | "reset";
 
 // El parámetro redirect solo acepta rutas internas (empiezan con "/" y no con "//").
@@ -15,7 +18,7 @@ const safeRedirect = (v: unknown): string | undefined =>
 const safeMode = (v: unknown): "reset" | undefined => (v === "reset" ? "reset" : undefined);
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (s: Record<string, unknown>): Search & { mode?: "reset" } => ({
+  validateSearch: (s: Record<string, unknown>): Search => ({
     redirect: safeRedirect(s["redirect"]),
     mode: safeMode(s["mode"]),
   }),

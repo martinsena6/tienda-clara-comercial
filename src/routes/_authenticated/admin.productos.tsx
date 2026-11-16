@@ -26,9 +26,9 @@ import {
   normalizeName,
   saveComboRecipe,
   setProductActive,
-  updateProductInternals,
   suppliersQuery,
   updateProductPhoto,
+  updateProductInternals,
   uploadBulkProductImages,
   useMyRole,
   usePanelProducts,
@@ -140,7 +140,6 @@ function ProductForm({
           isAdmin,
         );
       }
-      if (product && isAdmin) await updateProductInternals(product.id, { supplier });
       if (newProductId && isAdmin && Number(raw["initial_stock"] ?? 0) > 0) {
         try {
           await adjustStock(newProductId, "entrada", Number(raw["initial_stock"]), "Stock inicial");
@@ -1029,6 +1028,15 @@ function Productos() {
                 cell: (p) => p.categories?.name ?? "Sin categoría",
                 hideOnMobile: true,
               },
+              ...(isAdmin
+                ? [
+                    {
+                      header: "Proveedor",
+                      cell: (p: PanelProduct) => p.supplier || "—",
+                      hideOnMobile: true,
+                    },
+                  ]
+                : []),
               {
                 header: "Precio Venta",
                 cell: (p) => formatPrice(p.price),

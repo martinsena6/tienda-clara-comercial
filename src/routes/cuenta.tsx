@@ -51,10 +51,13 @@ function isOrderHistoryItem(
   value: unknown,
 ): value is { name?: string; quantity?: number; unit_price?: number } {
   if (!isRecord(value)) return false;
+  const name = value["name"];
+  const quantity = value["quantity"];
+  const unitPrice = value["unit_price"];
   return (
-    (typeof value.name === "string" || value.name === undefined) &&
-    (typeof value.quantity === "number" || value.quantity === undefined) &&
-    (typeof value.unit_price === "number" || value.unit_price === undefined)
+    (typeof name === "string" || name === undefined) &&
+    (typeof quantity === "number" || quantity === undefined) &&
+    (typeof unitPrice === "number" || unitPrice === undefined)
   );
 }
 

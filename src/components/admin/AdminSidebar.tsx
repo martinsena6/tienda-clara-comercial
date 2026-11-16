@@ -23,7 +23,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { useQuery } from "@tanstack/react-query";
-import { DEFAULT_SETTINGS, settingsQuery, useMyRole } from "@/lib/data";
+import { DEFAULT_SETTINGS, publicSettingsQuery, useMyRole } from "@/lib/data";
 
 interface Item {
   title: string;
@@ -61,7 +61,7 @@ const groups: { label: string; items: Item[] }[] = [
 ];
 
 export function AdminSidebar() {
-  const name = useQuery(settingsQuery).data?.name ?? DEFAULT_SETTINGS.name;
+  const name = useQuery(publicSettingsQuery).data?.name ?? DEFAULT_SETTINGS.name;
   const { isAdmin } = useMyRole();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const isActive = (url: string) =>

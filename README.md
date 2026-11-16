@@ -88,3 +88,12 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+## Database migrations
+
+Apply pending SQL files in `drizzle/migrations` in numeric order using the Supabase SQL Editor;
+do not rerun migrations that are already applied. Before deploying the public-settings changes,
+verify `0016_seguridad_stock_y_catalogo.sql` is applied, then apply
+`0017_configuracion_publica_segura.sql`. The storefront uses its public RPC, while direct access
+to the settings table is admin-only. Public category reads and product-photo reads are intentional
+for the storefront.

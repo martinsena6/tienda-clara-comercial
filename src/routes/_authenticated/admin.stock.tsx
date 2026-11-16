@@ -10,20 +10,9 @@ import { PageHeader } from "@/components/admin/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { AvailabilityBadge } from "@/components/shared/AvailabilityBadge";
 import { getAvailability } from "@/lib/domain/catalog";
-import {
-  adjustStock,
-  errorMessage,
-  movementsQuery,
-  suppliersQuery,
-  todayAR,
-  updateProductInternals,
-  useMyRole,
-  usePanelProducts,
-  type PanelProduct,
-} from "@/lib/data";
+import { adjustStock, errorMessage, movementsQuery, todayAR, usePanelProducts } from "@/lib/data";
 import { formatDate, movementLabel } from "@/lib/format";
 import { stockMovementSchema } from "@/lib/validation";
-import type { Column } from "@/components/admin/DataTable";
 
 export const Route = createFileRoute("/_authenticated/admin/stock")({
   head: () => ({
@@ -42,23 +31,9 @@ const tone = { entrada: "success", salida: "info", ajuste: "warning" } as const;
 function Stock() {
   const qc = useQueryClient();
   const products = usePanelProducts().data;
-  const { isAdmin } = useMyRole();
-  const suppliersQueryState = useQuery({ ...suppliersQuery, enabled: isAdmin });
-  const suppliers = suppliersQueryState.data ?? [];
   const movements = useQuery(movementsQuery).data ?? [];
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
-  const setSupplier = async (product: PanelProduct, supplier: string) => {
-    try {
-      await updateProductInternals(product.id, { supplier });
-      await qc.invalidateQueries({ queryKey: ["admin-products"] });
-      await qc.invalidateQueries({ queryKey: ["staff-products"] });
-      toast.success("Proveedor del producto actualizado");
-    } catch (error) {
-      toast.error(errorMessage(error));
-    }
-  };
-
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
@@ -142,33 +117,6 @@ function Stock() {
             className: "text-right",
             hideOnMobile: true,
           },
-          ...(isAdmin
-            ? [
-                {
-                  header: "Proveedor",
-                  cell: (p: PanelProduct) => (
-                    <select
-                      aria-label={`Proveedor de ${p.name}`}
-                      value={p.supplier ?? ""}
-                      onChange={(event) => void setSupplier(p, event.target.value)}
-                      className="h-9 min-w-40 rounded-md border bg-card px-2 text-sm"
-                    >
-                      <option value="">Sin proveedor</option>
-                      {p.supplier &&
-                        !suppliers.some((supplier) => supplier.name === p.supplier) && (
-                          <option value={p.supplier}>{p.supplier} (actual)</option>
-                        )}
-                      {suppliers.map((supplier) => (
-                        <option key={supplier.id} value={supplier.name}>
-                          {supplier.name}
-                        </option>
-                      ))}
-                    </select>
-                  ),
-                  hideOnMobile: true,
-                } satisfies Column<PanelProduct>,
-              ]
-            : []),
           {
             header: "Vencimiento",
             cell: (p) =>
@@ -191,18 +139,6 @@ function Stock() {
           },
         ]}
       />
-      {isAdmin && (
-        <div className="mt-3 text-sm">
-          {suppliersQueryState.error && (
-            <p role="alert" className="mb-2 text-destructive">
-              No se pudieron cargar los proveedores: {errorMessage(suppliersQueryState.error)}
-            </p>
-          )}
-          <a href="/admin/compras" className="font-medium text-primary underline">
-            Agregar proveedores y teléfonos de WhatsApp en Compras
-          </a>
-        </div>
-      )}
       <h2 className="mb-3 mt-8 text-lg font-semibold">Movimientos recientes</h2>
       <DataTable
         rows={movements}

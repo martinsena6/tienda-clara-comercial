@@ -4,7 +4,12 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DEFAULT_SETTINGS, myRoleQuery, publicProductsQuery, settingsQuery } from "@/lib/data";
+import {
+  DEFAULT_PUBLIC_SETTINGS,
+  myRoleQuery,
+  publicProductsQuery,
+  publicSettingsQuery,
+} from "@/lib/data";
 import { signOut, useSession } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { searchPublicProducts } from "@/lib/domain/catalog";
@@ -14,8 +19,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 
 /** Datos del negocio con respaldo por si la base todavía no responde. */
 export function useSettings() {
-  const { data } = useQuery(settingsQuery);
-  return data ?? DEFAULT_SETTINGS;
+  const { data } = useQuery(publicSettingsQuery);
+  return data ?? DEFAULT_PUBLIC_SETTINGS;
 }
 
 export function SearchBar({

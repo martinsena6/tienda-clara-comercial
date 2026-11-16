@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { FormField } from "@/components/admin/FormField";
 import { RequireAdmin } from "@/components/admin/RequireAdmin";
 import { PageHeader } from "@/components/admin/PageHeader";
-import { errorMessage, saveSettings, settingsQuery } from "@/lib/data";
+import { errorMessage, publicSettingsQuery, saveSettings, settingsQuery } from "@/lib/data";
 import { settingsSchema } from "@/lib/validation";
 import { requireAdminRoute } from "@/lib/auth";
 
@@ -55,6 +55,7 @@ function Configuracion() {
         email: d.email ?? "",
       });
       await qc.invalidateQueries({ queryKey: settingsQuery.queryKey });
+      await qc.invalidateQueries({ queryKey: publicSettingsQuery.queryKey });
       toast.success("Cambios guardados");
     } catch (err) {
       toast.error(errorMessage(err));
