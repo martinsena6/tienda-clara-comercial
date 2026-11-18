@@ -8,6 +8,7 @@ import {
   Settings,
   ShoppingBag,
   Store,
+  Truck,
   Wallet,
 } from "lucide-react";
 import {
@@ -49,6 +50,7 @@ const groups: { label: string; items: Item[] }[] = [
     label: "Operaciones",
     items: [
       { title: "Ventas (Pedidos)", url: "/admin/ventas", icon: ShoppingBag },
+      { title: "Compras y Proveedores", url: "/admin/compras", icon: Truck, adminOnly: true },
       { title: "Gastos", url: "/admin/gastos", icon: Wallet, adminOnly: true },
     ],
   },

@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { MessageCircle, Pencil, Plus, Trash2, Unlink } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,10 +20,13 @@ import {
   saveSupplier,
   suppliersQuery,
   todayAR,
+  updateProductInternals,
+  updateProductsSupplier,
   type AdminProduct,
 } from "@/lib/data";
 import { formatDate, formatPrice } from "@/lib/format";
 import { requireAdminRoute } from "@/lib/auth";
+import { arWhatsAppPhone, buildWhatsAppUrl } from "@/lib/whatsapp";
 
 export const Route = createFileRoute("/_authenticated/admin/compras")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -60,7 +63,8 @@ function Compras() {
   const qc = useQueryClient();
   const navigate = useNavigate({ from: "/admin/compras" });
   const prefill = Route.useSearch();
-  const rows = useQuery(purchasesQuery).data ?? [];
+  const purchasesResult = useQuery(purchasesQuery);
+  const rows = purchasesResult.data ?? [];
   const suppliersResult = useQuery(suppliersQuery);
   const productsResult = useQuery(adminProductsQuery);
   const suppliers = suppliersResult.data ?? EMPTY_SUPPLIERS;
@@ -77,6 +81,9 @@ function Compras() {
     notes: string;
   } | null>(null);
   const [search, setSearch] = useState("");
+  const [assignmentSearch, setAssignmentSearch] = useState("");
+  const [orderQuantities, setOrderQuantities] = useState<Record<string, string>>({});
+  const [orderCosts, setOrderCosts] = useState<Record<string, string>>({});
   const [lines, setLines] = useState<Line[]>([]);
   const [busy, setBusy] = useState(false);
   const appliedPrefill = useRef<string | null>(null);
@@ -91,19 +98,31 @@ function Compras() {
       const nextLines = parsed.flatMap((item): Line[] => {
         if (!item || typeof item !== "object") return [];
         const row = item as Record<string, unknown>;
-        if (typeof row["product_id"] !== "string" || typeof row["quantity"] !== "number" ||
-          !Number.isInteger(row["quantity"]) || row["quantity"] <= 0) return [];
+        if (
+          typeof row["product_id"] !== "string" ||
+          typeof row["quantity"] !== "number" ||
+          !Number.isInteger(row["quantity"]) ||
+          row["quantity"] <= 0
+        )
+          return [];
         const product = products.find((candidate) => candidate.id === row["product_id"]);
-        return product ? [{
-          product_id: product.id,
-          name: product.name,
-          quantity: String(row["quantity"]),
-          unit_cost: product.cost > 0 ? String(product.cost) : "",
-        }] : [];
+        return product
+          ? [
+              {
+                product_id: product.id,
+                name: product.name,
+                quantity: String(row["quantity"]),
+                unit_cost: product.cost > 0 ? String(product.cost) : "",
+              },
+            ]
+          : [];
       });
-      if (nextLines.length === 0) throw new Error("No se encontraron productos válidos para la compra");
+      if (nextLines.length === 0)
+        throw new Error("No se encontraron productos válidos para la compra");
       setLines(nextLines);
-      const supplier = suppliers.find((candidate) => normalizeName(candidate.name) === normalizeName(prefill.proveedor ?? ""));
+      const supplier = suppliers.find(
+        (candidate) => normalizeName(candidate.name) === normalizeName(prefill.proveedor ?? ""),
+      );
       setSupplierId(supplier?.id ?? "");
       setNotes("Pedido de reposición");
       toast.success(`${nextLines.length} productos cargados en Nueva compra`);
@@ -112,7 +131,40 @@ function Compras() {
       toast.error(errorMessage(error));
       void navigate({ search: {} });
     }
-  }, [prefill.items, prefill.proveedor, products, productsResult.isLoading, suppliers, suppliersResult.isLoading, navigate]);
+  }, [
+    prefill.items,
+    prefill.proveedor,
+    products,
+    productsResult.isLoading,
+    suppliers,
+    suppliersResult.isLoading,
+    navigate,
+  ]);
+
+  const selectedSupplier = suppliers.find((supplier) => supplier.id === supplierId);
+  const assignedProducts = useMemo(() => {
+    if (!selectedSupplier) return [];
+    return products
+      .filter(
+        (product) => normalizeName(product.supplier ?? "") === normalizeName(selectedSupplier.name),
+      )
+      .sort(
+        (a, b) =>
+          Number(a.stock_disponible > a.min_stock) - Number(b.stock_disponible > b.min_stock) ||
+          a.name.localeCompare(b.name, "es"),
+      );
+  }, [products, selectedSupplier]);
+  const assignmentMatches = useMemo(() => {
+    const query = normalizeName(assignmentSearch);
+    if (query.length < 2) return [];
+    return products
+      .filter(
+        (product) =>
+          normalizeName(product.name).includes(query) &&
+          normalizeName(product.supplier ?? "") !== normalizeName(selectedSupplier?.name ?? ""),
+      )
+      .slice(0, 8);
+  }, [assignmentSearch, products, selectedSupplier]);
 
   const matches = useMemo(() => {
     const q = normalizeName(search);
@@ -129,8 +181,66 @@ function Compras() {
   const setLine = (i: number, patch: Partial<Line>) =>
     setLines((ls) => ls.map((l, j) => (j === i ? { ...l, ...patch } : l)));
 
-  const save = async () => {
-    const items = lines.map((l) => ({
+  const providerLines = assignedProducts.flatMap((product): Line[] => {
+    const quantity = Number(
+      orderQuantities[product.id] ?? Math.max(0, product.min_stock - product.stock_disponible),
+    );
+    if (!Number.isInteger(quantity) || quantity <= 0) return [];
+    return [
+      {
+        product_id: product.id,
+        name: product.name,
+        quantity: String(quantity),
+        unit_cost: orderCosts[product.id] ?? String(product.cost ?? 0),
+      },
+    ];
+  });
+  const providerTotal = providerLines.reduce(
+    (sum, line) => sum + Number(line.quantity) * (parseArNumber(line.unit_cost) ?? 0),
+    0,
+  );
+  const supplierPhone = selectedSupplier?.phone ? arWhatsAppPhone(selectedSupplier.phone) : "";
+  const whatsappLines = providerLines.map((line) => `• ${line.quantity} x ${line.name}`);
+  const whatsappMessage = [
+    `Hola ${selectedSupplier?.name ?? ""}, te paso el pedido de Festiva:`,
+    "",
+    ...whatsappLines,
+  ].join("\n");
+  const validSupplierPhone = /^\d{11,15}$/.test(supplierPhone) ? supplierPhone : "";
+
+  const assignProduct = async (product: AdminProduct) => {
+    if (!selectedSupplier) return;
+    try {
+      await updateProductInternals(product.id, { supplier: selectedSupplier.name });
+      setAssignmentSearch("");
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["admin-products"] }),
+        qc.invalidateQueries({ queryKey: ["replenishment-suggestions"] }),
+      ]);
+      toast.success(`${product.name} asignado a ${selectedSupplier.name}`);
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  };
+  const unlinkProduct = async (product: AdminProduct) => {
+    try {
+      await updateProductInternals(product.id, { supplier: "" });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["admin-products"] }),
+        qc.invalidateQueries({ queryKey: ["replenishment-suggestions"] }),
+      ]);
+      toast.success(`${product.name} desvinculado del proveedor`);
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  };
+
+  const save = async (
+    purchaseLines = lines,
+    purchaseSupplierId = supplierId,
+    purchaseNotes = notes,
+  ) => {
+    const items = purchaseLines.map((l) => ({
       product_id: l.product_id,
       quantity: Math.trunc(Number(l.quantity)),
       unit_cost: parseArNumber(l.unit_cost) ?? NaN,
@@ -147,18 +257,27 @@ function Compras() {
     try {
       const r = await registerPurchase({
         date,
-        supplier_id: supplierId || null,
-        notes,
+        supplier_id: purchaseSupplierId || null,
+        notes: purchaseNotes,
         items,
         update_cost: updateCost,
       });
       toast.success(`Compra #${r?.purchase_number ?? ""} registrada; el stock se sumó.`);
-      setLines([]);
-      setNotes("");
+      if (purchaseLines === lines) {
+        setLines([]);
+        setNotes("");
+      } else {
+        setOrderQuantities({});
+      }
       await Promise.all(
-        ["purchases", "admin-products", "movements"].map((k) =>
-          qc.invalidateQueries({ queryKey: [k] }),
-        ),
+        [
+          "purchases",
+          "admin-products",
+          "products",
+          "staff-products",
+          "movements",
+          "replenishment-suggestions",
+        ].map((k) => qc.invalidateQueries({ queryKey: [k] })),
       );
     } catch (err) {
       toast.error(errorMessage(err));
@@ -173,23 +292,93 @@ function Compras() {
       toast.error("Ingresá el nombre del proveedor");
       return;
     }
+    const previousSupplier = supplierDraft.id
+      ? suppliers.find((supplier) => supplier.id === supplierDraft.id)
+      : undefined;
+    const renamedProductIds =
+      previousSupplier && normalizeName(previousSupplier.name) !== normalizeName(supplierDraft.name)
+        ? products
+            .filter(
+              (product) =>
+                normalizeName(product.supplier ?? "") === normalizeName(previousSupplier.name),
+            )
+            .map((product) => product.id)
+        : [];
+    let supplierSaved = false;
     try {
+      if (previousSupplier && renamedProductIds.length > 0) {
+        await updateProductsSupplier(renamedProductIds, supplierDraft.name.trim());
+      }
       await saveSupplier({ ...supplierDraft, name: supplierDraft.name.trim() });
+      supplierSaved = true;
+      const savedName = supplierDraft.name.trim();
       setSupplierDraft(null);
       await qc.invalidateQueries({ queryKey: ["suppliers"] });
+      if (renamedProductIds.length > 0) {
+        await Promise.all([
+          qc.invalidateQueries({ queryKey: ["admin-products"] }),
+          qc.invalidateQueries({ queryKey: ["replenishment-suggestions"] }),
+        ]);
+      }
+      const updatedSuppliers = await qc.fetchQuery(suppliersQuery);
+      if (!supplierDraft.id) {
+        const savedSupplier = updatedSuppliers.find(
+          (supplier) => normalizeName(supplier.name) === normalizeName(savedName),
+        );
+        if (savedSupplier) setSupplierId(savedSupplier.id);
+      }
       toast.success(supplierDraft.id ? "Proveedor actualizado" : "Proveedor guardado");
     } catch (err) {
+      if (!supplierSaved && previousSupplier && renamedProductIds.length > 0) {
+        try {
+          await updateProductsSupplier(renamedProductIds, previousSupplier.name);
+        } catch (rollbackError) {
+          toast.error(
+            `No se guardó el proveedor y tampoco se pudieron restaurar sus productos. ${errorMessage(rollbackError)}`,
+          );
+          return;
+        }
+      }
       toast.error(errorMessage(err));
     }
   };
   const removeSupplier = async (id: string) => {
     if (!confirm("¿Borrar este proveedor?")) return;
+    const supplier = suppliers.find((entry) => entry.id === id);
+    const assignedIds = supplier
+      ? products
+          .filter(
+            (product) => normalizeName(product.supplier ?? "") === normalizeName(supplier.name),
+          )
+          .map((product) => product.id)
+      : [];
+    let productsUnlinked = false;
+    let supplierDeleted = false;
     try {
+      if (supplier && assignedIds.length > 0) {
+        await updateProductsSupplier(assignedIds, "");
+        productsUnlinked = true;
+      }
       await deleteSupplier(id);
+      supplierDeleted = true;
       if (supplierId === id) setSupplierId("");
-      await qc.invalidateQueries({ queryKey: ["suppliers"] });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["suppliers"] }),
+        qc.invalidateQueries({ queryKey: ["admin-products"] }),
+        qc.invalidateQueries({ queryKey: ["replenishment-suggestions"] }),
+      ]);
       toast.success("Proveedor eliminado");
     } catch (err) {
+      if (!supplierDeleted && productsUnlinked && supplier) {
+        try {
+          await updateProductsSupplier(assignedIds, supplier.name);
+        } catch (rollbackError) {
+          toast.error(
+            `No se pudo eliminar el proveedor ni restaurar las asociaciones de productos. ${errorMessage(rollbackError)}`,
+          );
+          return;
+        }
+      }
       toast.error(errorMessage(err));
     }
   };
@@ -197,9 +386,272 @@ function Compras() {
   return (
     <>
       <PageHeader
-        title="Compras"
-        description="Al registrar una compra se suma el stock de cada producto."
+        title="Compras y Proveedores"
+        description="Elegí un proveedor, armá un pedido y registrá el ingreso para actualizar el stock."
       />
+      {suppliersResult.error && (
+        <p role="alert" className="mb-4 text-sm text-destructive">
+          No se pudieron cargar los proveedores: {errorMessage(suppliersResult.error)}
+        </p>
+      )}
+      {productsResult.error && (
+        <p role="alert" className="mb-4 text-sm text-destructive">
+          No se pudieron cargar los productos: {errorMessage(productsResult.error)}
+        </p>
+      )}
+      {purchasesResult.error && (
+        <p role="alert" className="mb-4 text-sm text-destructive">
+          No se pudo cargar el historial de compras: {errorMessage(purchasesResult.error)}
+        </p>
+      )}
+      <section className="mb-6 space-y-4 rounded-xl border bg-card p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold">Centro de proveedores</h2>
+            <p className="text-sm text-muted-foreground">
+              Productos asignados, stock, cantidades a pedir y registro de compras.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setSupplierDraft({ name: "", phone: "", notes: "" })}
+          >
+            <Plus /> Nuevo proveedor
+          </Button>
+        </div>
+        {suppliers.length > 0 ? (
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {suppliers.map((supplier) => {
+              const count = products.filter(
+                (product) => normalizeName(product.supplier ?? "") === normalizeName(supplier.name),
+              ).length;
+              return (
+                <button
+                  type="button"
+                  key={supplier.id}
+                  onClick={() => setSupplierId(supplier.id)}
+                  aria-pressed={supplier.id === supplierId}
+                  className={`min-w-36 rounded-lg border px-3 py-2 text-left text-sm ${
+                    supplier.id === supplierId ? "border-primary bg-primary/5" : "hover:bg-muted"
+                  }`}
+                >
+                  <span className="block font-medium">{supplier.name}</span>
+                  <span className="text-muted-foreground">{count} productos</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+            Todavía no hay proveedores. Agregá uno para empezar a organizar tus compras.
+          </p>
+        )}
+        {suppliers.length > 0 && !selectedSupplier && (
+          <p className="text-sm text-muted-foreground">
+            Seleccioná un proveedor para ver sus productos y preparar un pedido.
+          </p>
+        )}
+        {supplierDraft && (
+          <form
+            onSubmit={saveSupplierForm}
+            className="grid gap-2 rounded-lg border p-3 sm:grid-cols-4"
+          >
+            <Input
+              required
+              maxLength={120}
+              placeholder="Nombre"
+              value={supplierDraft.name}
+              onChange={(e) => setSupplierDraft({ ...supplierDraft, name: e.target.value })}
+            />
+            <Input
+              maxLength={40}
+              placeholder="Teléfono"
+              value={supplierDraft.phone}
+              onChange={(e) => setSupplierDraft({ ...supplierDraft, phone: e.target.value })}
+            />
+            <Input
+              maxLength={300}
+              placeholder="Notas"
+              value={supplierDraft.notes}
+              onChange={(e) => setSupplierDraft({ ...supplierDraft, notes: e.target.value })}
+            />
+            <div className="flex gap-2">
+              <Button type="submit" className="flex-1">
+                {supplierDraft.id ? "Guardar" : "Agregar"}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setSupplierDraft(null)}>
+                Cancelar
+              </Button>
+            </div>
+          </form>
+        )}
+        {selectedSupplier && (
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-muted/40 p-3">
+              <div>
+                <h3 className="font-semibold">{selectedSupplier.name}</h3>
+                <p className="text-sm text-muted-foreground">
+                  Teléfono: {selectedSupplier.phone || "Sin teléfono"}
+                  {selectedSupplier.notes ? ` · ${selectedSupplier.notes}` : ""}
+                </p>
+              </div>
+              <div className="flex gap-1">
+                {validSupplierPhone && providerLines.length > 0 && (
+                  <Button asChild size="sm" className="bg-green-600 text-white hover:bg-green-700">
+                    <a
+                      href={buildWhatsAppUrl(validSupplierPhone, whatsappMessage)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <MessageCircle /> WhatsApp
+                    </a>
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  aria-label={`Editar ${selectedSupplier.name}`}
+                  onClick={() =>
+                    setSupplierDraft({
+                      id: selectedSupplier.id,
+                      name: selectedSupplier.name,
+                      phone: selectedSupplier.phone,
+                      notes: selectedSupplier.notes,
+                    })
+                  }
+                >
+                  <Pencil />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  aria-label={`Eliminar ${selectedSupplier.name}`}
+                  onClick={() => removeSupplier(selectedSupplier.id)}
+                >
+                  <Trash2 />
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="supplier-product-search" className="text-sm font-medium">
+                Asignar producto a {selectedSupplier.name}
+              </label>
+              <div className="relative">
+                <Input
+                  id="supplier-product-search"
+                  placeholder="Buscar producto por nombre…"
+                  value={assignmentSearch}
+                  onChange={(event) => setAssignmentSearch(event.target.value)}
+                />
+                {assignmentMatches.length > 0 && (
+                  <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md border bg-popover shadow-lift">
+                    {assignmentMatches.map((product) => (
+                      <li key={product.id}>
+                        <button
+                          type="button"
+                          className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
+                          onClick={() => void assignProduct(product)}
+                        >
+                          {product.name} · {product.supplier || "Sin proveedor"}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+            {productsResult.isLoading ? (
+              <p className="text-sm text-muted-foreground">Cargando productos…</p>
+            ) : assignedProducts.length > 0 ? (
+              <div className="space-y-2">
+                <h3 className="font-medium">Productos de {selectedSupplier.name}</h3>
+                {assignedProducts.map((product) => {
+                  const low = product.stock_disponible <= product.min_stock;
+                  return (
+                    <div
+                      key={product.id}
+                      className="grid gap-2 rounded-lg border p-3 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto]"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">{product.name}</p>
+                        <p
+                          className={`text-sm ${low ? "font-medium text-destructive" : "text-muted-foreground"}`}
+                        >
+                          Stock: {product.stock_disponible} · Mínimo: {product.min_stock}
+                          {low ? " · Reponer" : ""}
+                        </p>
+                      </div>
+                      <p className="self-center text-sm text-muted-foreground">
+                        Costo: {formatPrice(product.cost ?? 0)}
+                      </p>
+                      <Input
+                        aria-label={`Cantidad a pedir de ${product.name}`}
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={
+                          orderQuantities[product.id] ??
+                          String(Math.max(0, product.min_stock - product.stock_disponible))
+                        }
+                        onChange={(event) =>
+                          setOrderQuantities((current) => ({
+                            ...current,
+                            [product.id]: event.target.value,
+                          }))
+                        }
+                        className="w-24"
+                      />
+                      <Input
+                        aria-label={`Costo unitario de ${product.name}`}
+                        inputMode="decimal"
+                        value={orderCosts[product.id] ?? String(product.cost ?? 0)}
+                        onChange={(event) =>
+                          setOrderCosts((current) => ({
+                            ...current,
+                            [product.id]: event.target.value,
+                          }))
+                        }
+                        className="w-28"
+                      />
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        aria-label={`Desvincular ${product.name}`}
+                        onClick={() => void unlinkProduct(product)}
+                      >
+                        <Unlink />
+                      </Button>
+                    </div>
+                  );
+                })}
+                <div className="flex flex-wrap items-center justify-end gap-3 border-t pt-3">
+                  <span className="font-semibold">
+                    Total estimado: {formatPrice(providerTotal)}
+                  </span>
+                  <Button
+                    disabled={busy || providerLines.length === 0}
+                    onClick={() =>
+                      void save(
+                        providerLines,
+                        selectedSupplier.id,
+                        `Compra a ${selectedSupplier.name}`,
+                      )
+                    }
+                  >
+                    Registrar compra e ingresar stock
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                No hay productos asignados. Buscá un producto arriba para asociarlo a este
+                proveedor.
+              </p>
+            )}
+          </>
+        )}
+      </section>
       <section className="mb-6 space-y-3 rounded-xl border bg-card p-4">
         <h2 className="font-semibold">Nueva compra</h2>
         <div className="grid gap-2 sm:grid-cols-4">
@@ -292,7 +744,7 @@ function Compras() {
             Actualizar el costo de los productos
           </label>
           <span className="ml-auto font-semibold">Total: {formatPrice(total)}</span>
-          <Button disabled={busy} onClick={save}>
+          <Button disabled={busy} onClick={() => void save()}>
             Registrar compra
           </Button>
         </div>
@@ -321,92 +773,6 @@ function Compras() {
         ]}
       />
       {open && <Detail id={open} />}
-      <section className="mt-8 rounded-xl border bg-card p-4">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="font-semibold">Proveedores</h2>
-            <p className="text-sm text-muted-foreground">
-              Administrá los datos de tus proveedores.
-            </p>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setSupplierDraft({ name: "", phone: "", notes: "" })}
-          >
-            Agregar proveedor
-          </Button>
-        </div>
-        {supplierDraft && (
-          <form
-            onSubmit={saveSupplierForm}
-            className="mb-4 grid gap-2 rounded-lg border p-3 sm:grid-cols-4"
-          >
-            <Input
-              required
-              maxLength={120}
-              placeholder="Nombre"
-              value={supplierDraft.name}
-              onChange={(e) => setSupplierDraft({ ...supplierDraft, name: e.target.value })}
-            />
-            <Input
-              maxLength={40}
-              placeholder="Teléfono"
-              value={supplierDraft.phone}
-              onChange={(e) => setSupplierDraft({ ...supplierDraft, phone: e.target.value })}
-            />
-            <Input
-              maxLength={300}
-              placeholder="Notas"
-              value={supplierDraft.notes}
-              onChange={(e) => setSupplierDraft({ ...supplierDraft, notes: e.target.value })}
-            />
-            <div className="flex gap-2">
-              <Button type="submit" className="flex-1">
-                {supplierDraft.id ? "Guardar" : "Agregar"}
-              </Button>
-              <Button type="button" variant="outline" onClick={() => setSupplierDraft(null)}>
-                Cancelar
-              </Button>
-            </div>
-          </form>
-        )}
-        <DataTable
-          rows={suppliers}
-          getKey={(s) => s.id}
-          empty={<p className="py-2 text-sm text-muted-foreground">Todavía no hay proveedores.</p>}
-          columns={[
-            { header: "Proveedor", cell: (s) => s.name },
-            { header: "Teléfono", cell: (s) => s.phone || "—", hideOnMobile: true },
-            { header: "Notas", cell: (s) => s.notes || "—", hideOnMobile: true },
-            {
-              header: "Acciones",
-              cell: (s) => (
-                <div className="flex gap-1">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    aria-label={`Editar ${s.name}`}
-                    onClick={() =>
-                      setSupplierDraft({ id: s.id, name: s.name, phone: s.phone, notes: s.notes })
-                    }
-                  >
-                    <Pencil />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    aria-label={`Borrar ${s.name}`}
-                    onClick={() => removeSupplier(s.id)}
-                  >
-                    <Trash2 />
-                  </Button>
-                </div>
-              ),
-            },
-          ]}
-        />
-      </section>
     </>
   );
 }

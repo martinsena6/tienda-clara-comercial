@@ -423,20 +423,20 @@ export async function undoPriceBatch(batchId: string) {
 }
 
 export const replenishmentQuery = queryOptions({
-  queryKey: ["replenishment-suggestions", 7],
+  queryKey: ["replenishment-suggestions"],
   queryFn: async () => {
     const products = await fetchAdminProducts();
     return products
-      .filter((product) => product.active && product.stock_disponible <= 7)
+      .filter((product) => product.active && product.stock_disponible <= product.min_stock)
       .map((product) => {
         const supplier = product.supplier?.trim() ?? "";
         return {
           product_id: product.id,
           name: product.name,
           stock: product.stock_disponible,
-          min_stock: 7,
+          min_stock: product.min_stock,
           supplier: normalizeName(supplier) === "a definir" ? "" : supplier,
-          sugerido: Math.max(0, 7 - product.stock_disponible),
+          sugerido: Math.max(0, product.min_stock - product.stock_disponible),
         };
       });
   },
@@ -962,9 +962,15 @@ export async function setProductActive(id: string, active: boolean, includeInter
 /** Edición en línea de costo y proveedor (solo admin). */
 export async function updateProductInternals(
   id: string,
-  input: { cost?: number; price?: number; supplier?: string },
+  input: { cost?: number; price?: number; supplier?: string; expiration_date?: string | null },
 ) {
   const { error } = await supabase.from("products").update(input).eq("id", id);
+  if (error) throw error;
+}
+
+export async function updateProductsSupplier(productIds: string[], supplier: string) {
+  if (productIds.length === 0) return;
+  const { error } = await supabase.from("products").update({ supplier }).in("id", productIds);
   if (error) throw error;
 }
 

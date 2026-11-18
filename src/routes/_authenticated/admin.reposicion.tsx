@@ -49,7 +49,7 @@ function Reposicion() {
     <>
       <PageHeader
         title="Reposición"
-        description="Solo aparecen productos con 7 unidades o menos. La cantidad sugerida completa hasta llegar a 7."
+        description="Se muestran productos cuyo stock está en o debajo de su mínimo configurado; la cantidad sugerida completa ese mínimo."
       />
       {error && (
         <p role="alert" className="mb-4 text-sm text-destructive">

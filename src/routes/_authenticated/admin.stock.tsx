@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,16 @@ import { PageHeader } from "@/components/admin/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { AvailabilityBadge } from "@/components/shared/AvailabilityBadge";
 import { getAvailability } from "@/lib/domain/catalog";
-import { adjustStock, errorMessage, movementsQuery, todayAR, usePanelProducts } from "@/lib/data";
+import {
+  adjustStock,
+  applyStockCount,
+  errorMessage,
+  movementsQuery,
+  normalizeName,
+  todayAR,
+  updateProductInternals,
+  usePanelProducts,
+} from "@/lib/data";
 import { formatDate, movementLabel } from "@/lib/format";
 import { stockMovementSchema } from "@/lib/validation";
 
@@ -30,10 +39,82 @@ const tone = { entrada: "success", salida: "info", ajuste: "warning" } as const;
 
 function Stock() {
   const qc = useQueryClient();
-  const products = usePanelProducts().data;
-  const movements = useQuery(movementsQuery).data ?? [];
+  const panelProducts = usePanelProducts();
+  const { data: products = [], isAdmin, error: productsError } = panelProducts;
+  const movementsResult = useQuery(movementsQuery);
+  const movements = movementsResult.data ?? [];
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [countDrafts, setCountDrafts] = useState<Record<string, string>>({});
+  const [expirationDrafts, setExpirationDrafts] = useState<Record<string, string>>({});
+  const [savingCount, setSavingCount] = useState<string | null>(null);
+  const [savingExpiration, setSavingExpiration] = useState<string | null>(null);
+  const filteredProducts = useMemo(() => {
+    const query = normalizeName(search);
+    return products.filter((product) => {
+      if (query && !normalizeName(product.name).includes(query)) return false;
+      if (filter === "low" && product.stock_disponible > product.min_stock) return false;
+      if (
+        filter === "expired" &&
+        (!product.expiration_date || product.expiration_date >= todayAR())
+      )
+        return false;
+      return true;
+    });
+  }, [products, search, filter]);
+
+  const saveCount = async (productId: string) => {
+    const counted = Number(countDrafts[productId]);
+    if (!Number.isInteger(counted) || counted < 0) {
+      toast.error("El conteo debe ser un número entero igual o mayor a cero");
+      return;
+    }
+    setSavingCount(productId);
+    try {
+      await applyStockCount([{ product_id: productId, counted }], "Conteo físico");
+      setCountDrafts((current) => {
+        const next = { ...current };
+        delete next[productId];
+        return next;
+      });
+      await Promise.all(
+        [
+          "admin-products",
+          "staff-products",
+          "products",
+          "movements",
+          "replenishment-suggestions",
+        ].map((key) => qc.invalidateQueries({ queryKey: [key] })),
+      );
+      toast.success("Conteo guardado y movimiento de ajuste registrado");
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setSavingCount(null);
+    }
+  };
+
+  const saveExpiration = async (productId: string) => {
+    setSavingExpiration(productId);
+    try {
+      await updateProductInternals(productId, {
+        expiration_date: expirationDrafts[productId] || null,
+      });
+      setExpirationDrafts((current) => {
+        const next = { ...current };
+        delete next[productId];
+        return next;
+      });
+      await qc.invalidateQueries({ queryKey: ["admin-products"] });
+      toast.success("Fecha de vencimiento actualizada");
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setSavingExpiration(null);
+    }
+  };
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
@@ -60,8 +141,50 @@ function Stock() {
     <>
       <PageHeader
         title="Stock y Vencimientos"
-        description="El stock solo cambia mediante movimientos registrados. Revisá también las fechas de vencimiento."
+        description="Buscá productos, registrá el conteo físico con trazabilidad y mantené actualizados sus vencimientos."
       />
+      {productsError && (
+        <p role="alert" className="mb-4 text-sm text-destructive">
+          No se pudo cargar el stock: {errorMessage(productsError)}
+        </p>
+      )}
+      {movementsResult.error && (
+        <p role="alert" className="mb-4 text-sm text-destructive">
+          No se pudieron cargar los movimientos: {errorMessage(movementsResult.error)}
+        </p>
+      )}
+      <div className="mb-4 flex flex-wrap items-end gap-3">
+        <div className="min-w-56 flex-1">
+          <label htmlFor="stock-search" className="mb-1 block text-sm font-medium">
+            Buscar producto
+          </label>
+          <Input
+            id="stock-search"
+            type="search"
+            placeholder="Nombre del producto…"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </div>
+        <div className="min-w-44">
+          <label htmlFor="stock-filter" className="mb-1 block text-sm font-medium">
+            Mostrar
+          </label>
+          <select
+            id="stock-filter"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+            className="h-9 w-full rounded-md border bg-card px-3 text-sm"
+          >
+            <option value="all">Todos los productos</option>
+            <option value="low">En o debajo del mínimo</option>
+            <option value="expired">Vencidos</option>
+          </select>
+        </div>
+        <Button asChild variant="outline">
+          <Link to="/admin/productos">Crear o editar productos</Link>
+        </Button>
+      </div>
       <form
         onSubmit={submit}
         className="mb-6 grid gap-3 rounded-xl border bg-card p-4 shadow-soft sm:grid-cols-5 sm:items-end"
@@ -106,21 +229,69 @@ function Stock() {
         </Button>
       </form>
       <DataTable
-        rows={products}
+        rows={filteredProducts}
         getKey={(p) => p.id}
+        empty={
+          <p className="text-sm text-muted-foreground">
+            No hay productos que coincidan con la búsqueda.
+          </p>
+        }
         columns={[
           { header: "Producto", cell: (p) => <span className="font-medium">{p.name}</span> },
           { header: "Unidades", cell: (p) => p.stock_disponible, className: "text-right" },
           {
             header: "Mínimo",
-            cell: () => 7,
+            cell: (p) => p.min_stock,
             className: "text-right",
             hideOnMobile: true,
           },
           {
             header: "Vencimiento",
             cell: (p) =>
-              p.expiration_date ? (
+              isAdmin ? (
+                <div className="flex min-w-48 flex-col gap-1">
+                  <div className="flex items-center gap-1">
+                    <Input
+                      aria-label={`Vencimiento de ${p.name}`}
+                      type="date"
+                      value={
+                        p.id in expirationDrafts
+                          ? expirationDrafts[p.id]
+                          : (p.expiration_date ?? "")
+                      }
+                      onChange={(event) =>
+                        setExpirationDrafts((current) => ({
+                          ...current,
+                          [p.id]: event.target.value,
+                        }))
+                      }
+                      className="min-w-0"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={savingExpiration === p.id || !(p.id in expirationDrafts)}
+                      onClick={() => void saveExpiration(p.id)}
+                    >
+                      Guardar
+                    </Button>
+                  </div>
+                  {p.expiration_date ? (
+                    <span
+                      className={`text-xs ${
+                        p.expiration_date < todayAR()
+                          ? "font-medium text-destructive"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {p.expiration_date < todayAR() ? "Vencido · " : "Vence "}
+                      {formatDate(p.expiration_date)}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Sin fecha de vencimiento</span>
+                  )}
+                </div>
+              ) : p.expiration_date ? (
                 <span
                   className={p.expiration_date < todayAR() ? "font-medium text-destructive" : ""}
                 >
@@ -131,6 +302,43 @@ function Stock() {
                 <span className="text-muted-foreground">Sin fecha</span>
               ),
           },
+          ...(isAdmin
+            ? [
+                {
+                  header: "Conteo físico",
+                  cell: (p: (typeof filteredProducts)[number]) => (
+                    <div className="flex min-w-40 items-center gap-1">
+                      <Input
+                        aria-label={`Conteo físico de ${p.name}`}
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={countDrafts[p.id] ?? String(p.stock_disponible)}
+                        onChange={(event) =>
+                          setCountDrafts((current) => ({
+                            ...current,
+                            [p.id]: event.target.value,
+                          }))
+                        }
+                        className="w-24"
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={
+                          savingCount === p.id ||
+                          !(p.id in countDrafts) ||
+                          Number(countDrafts[p.id]) === p.stock_disponible
+                        }
+                        onClick={() => void saveCount(p.id)}
+                      >
+                        Guardar
+                      </Button>
+                    </div>
+                  ),
+                },
+              ]
+            : []),
           {
             header: "Estado",
             cell: (p) => (
