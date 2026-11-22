@@ -141,13 +141,6 @@ function CatalogHeader() {
         </Link>
         <nav className="hidden items-center gap-5 text-sm md:flex">
           <Link
-            to="/catalogo/productos"
-            className="text-muted-foreground hover:text-foreground"
-            activeProps={{ className: "text-foreground font-medium" }}
-          >
-            Productos
-          </Link>
-          <Link
             to="/catalogo/categorias"
             className="text-muted-foreground hover:text-foreground"
             activeProps={{ className: "text-foreground font-medium" }}
@@ -244,13 +237,6 @@ function CatalogHeader() {
         </Sheet>
       </div>
       <nav className="mx-auto flex max-w-6xl gap-5 px-4 pb-2 text-sm md:hidden">
-        <Link
-          to="/catalogo/productos"
-          className="text-muted-foreground"
-          activeProps={{ className: "text-foreground font-medium" }}
-        >
-          Productos
-        </Link>
         <Link
           to="/catalogo/categorias"
           className="text-muted-foreground"

@@ -36,7 +36,7 @@ interface Item {
 const groups: { label: string; items: Item[] }[] = [
   {
     label: "General",
-    items: [{ title: "Inicio / Rentabilidad", url: "/admin", icon: BarChart3 }],
+    items: [{ title: "Panel Principal", url: "/admin", icon: BarChart3 }],
   },
   {
     label: "Catálogo y Stock",
@@ -49,6 +49,7 @@ const groups: { label: string; items: Item[] }[] = [
   {
     label: "Operaciones",
     items: [
+      { title: "Venta Presencial", url: "/admin/mostrador", icon: Store },
       { title: "Ventas (Pedidos)", url: "/admin/ventas", icon: ShoppingBag },
       { title: "Compras y Proveedores", url: "/admin/compras", icon: Truck, adminOnly: true },
       { title: "Gastos", url: "/admin/gastos", icon: Wallet, adminOnly: true },

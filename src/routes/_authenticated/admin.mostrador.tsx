@@ -27,7 +27,7 @@ interface Line {
 export const Route = createFileRoute("/_authenticated/admin/mostrador")({
   head: () => ({
     meta: [
-      { title: "Venta en el local — Panel Festiva" },
+      { title: "Venta Presencial — Panel Festiva" },
       { name: "description", content: "Registrar una venta de mostrador." },
       { name: "robots", content: "noindex" },
     ],
@@ -110,7 +110,7 @@ function Mostrador() {
   return (
     <>
       <PageHeader
-        title="Venta en el local"
+        title="Venta Presencial"
         description="Registrá ventas de mostrador. Cada venta descuenta stock y guarda el costo vigente."
       />
       {result && (
