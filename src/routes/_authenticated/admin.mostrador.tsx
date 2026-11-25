@@ -340,7 +340,7 @@ export default function Mostrador() {
       setResult({
         number: saved.number,
         total: saved.total,
-        change: paymentMethod === "efectivo" ? change : undefined,
+        ...(paymentMethod === "efectivo" && change > 0 ? { change } : {}),
       });
 
       // Limpiar formulario para el siguiente cliente
@@ -412,7 +412,7 @@ export default function Mostrador() {
               {formatPrice(cajaResumen.digital)}
             </div>
             <p className="mt-1 text-xs text-blue-700 dark:text-blue-400">
-              Mercado Pago y transferencias
+              Mercado Pago / Banco
             </p>
           </CardContent>
         </Card>
@@ -435,75 +435,67 @@ export default function Mostrador() {
         </Card>
       </div>
 
-      {/* AVISO DE VENTA REGISTRADA Y VUELTO */}
+      {/* AVISO DE VENTA EXITOSA CON VUELTO */}
       {result && (
-        <div
+        <section
           role="status"
-          className="flex flex-col gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 sm:flex-row sm:items-center sm:justify-between"
+          className="flex flex-col gap-2 rounded-xl border border-emerald-300 bg-emerald-50 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-emerald-800 dark:bg-emerald-950/30"
         >
           <div className="flex items-center gap-3">
-            <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+            <div className="grid h-10 w-10 place-items-center rounded-full bg-emerald-600 text-white">
+              <CheckCircle2 className="h-6 w-6" />
+            </div>
             <div>
-              <h2 className="font-semibold text-emerald-950 dark:text-emerald-100">
-                ¡Venta #{result.number} registrada con éxito!
+              <h2 className="font-bold text-base text-emerald-900 dark:text-emerald-200">
+                ¡Venta #{result.number} registrada exitosamente!
               </h2>
-              <p className="text-sm text-emerald-900/80 dark:text-emerald-200/80">
-                Total cobrado: <strong className="font-semibold">{formatPrice(result.total)}</strong>
+              <p className="text-sm text-emerald-800 dark:text-emerald-300">
+                Total cobrado: <span className="font-extrabold">{formatPrice(result.total)}</span>
                 {result.change !== undefined && result.change > 0 && (
-                  <span className="ml-2 rounded-md bg-emerald-600/20 px-2 py-0.5 text-xs font-bold text-emerald-800 dark:text-emerald-300">
-                    Vuelto a entregar: {formatPrice(result.change)}
-                  </span>
+                  <> · Vuelto a entregar: <span className="font-black underline">{formatPrice(result.change)}</span></>
                 )}
               </p>
             </div>
           </div>
           <Button
-            size="sm"
             variant="outline"
-            onClick={() => setResult(null)}
-            className="self-start sm:self-center"
+            size="sm"
+            className="border-emerald-400 bg-background hover:bg-emerald-100 text-emerald-900"
+            onClick={resetForm}
           >
-            Nueva Venta
+            <RotateCcw className="mr-1 h-3.5 w-3.5" /> Nueva Venta
           </Button>
-        </div>
+        </section>
       )}
 
-      {/* REGISTRO DE VENTA Y SELECCIÓN DE PRODUCTOS */}
-      <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        {/* COLUMNA IZQUIERDA: CARRITO Y COBRO */}
+      {/* ÁREA PRINCIPAL: TERMINAL DE COBRO A LA IZQUIERDA Y CATÁLOGO A LA DERECHA */}
+      <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
+        {/* COLUMNA IZQUIERDA: DETALLE DEL TICKET ACTUAL */}
         <div className="space-y-4 rounded-xl border bg-card p-5 shadow-xs">
           <div className="flex items-center justify-between border-b pb-3">
             <h2 className="font-semibold text-base flex items-center gap-2">
               <ShoppingBag className="h-5 w-5 text-primary" />
-              Detalle de la Venta
+              Ticket Actual ({lines.length} {lines.length === 1 ? "artículo" : "artículos"})
             </h2>
             {lines.length > 0 && (
               <Button
-                type="button"
                 variant="ghost"
                 size="sm"
+                className="h-8 text-xs text-muted-foreground hover:text-destructive"
                 onClick={resetForm}
-                className="text-xs text-muted-foreground hover:text-destructive"
               >
-                <RotateCcw className="mr-1 h-3.5 w-3.5" />
-                Vaciar lista
+                Vaciar ticket
               </Button>
             )}
           </div>
 
-          {/* LISTA DE LÍNEAS DEL CARRITO */}
           {lines.length === 0 ? (
-            <div className="rounded-lg border border-dashed py-10 text-center">
-              <ShoppingBag className="mx-auto h-8 w-8 text-muted-foreground/40" />
-              <p className="mt-2 text-sm font-medium text-muted-foreground">
-                El carrito está vacío
-              </p>
-              <p className="text-xs text-muted-foreground/80">
-                Seleccioná productos de la derecha o usá el buscador.
-              </p>
+            <div className="py-10 text-center text-sm text-muted-foreground border border-dashed rounded-lg">
+              <Store className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
+              El ticket está vacío. Seleccioná o buscá productos en el catálogo de la derecha.
             </div>
           ) : (
-            <div className="divide-y max-h-[380px] overflow-y-auto pr-1">
+            <div className="divide-y max-h-[320px] overflow-y-auto pr-1">
               {lines.map((line, index) => {
                 const price = line.unit_price.trim()
                   ? (parseArNumber(line.unit_price) ?? 0)
