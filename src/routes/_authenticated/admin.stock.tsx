@@ -51,9 +51,14 @@ function Stock() {
   const [expirationDrafts, setExpirationDrafts] = useState<Record<string, string>>({});
   const [savingCount, setSavingCount] = useState<string | null>(null);
   const [savingExpiration, setSavingExpiration] = useState<string | null>(null);
+
   const filteredProducts = useMemo(() => {
     const query = normalizeName(search);
     return products.filter((product) => {
+      // Excluir descontinuados de la tabla diaria salvo que se elija verlos explícitamente
+      if (!product.active && filter !== "archived") return false;
+      if (filter === "archived" && product.active) return false;
+
       if (query && !normalizeName(product.name).includes(query)) return false;
       if (filter === "low" && product.stock_disponible > product.min_stock) return false;
       if (
@@ -115,6 +120,7 @@ function Stock() {
       setSavingExpiration(null);
     }
   };
+
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
@@ -176,9 +182,10 @@ function Stock() {
             onChange={(event) => setFilter(event.target.value)}
             className="h-9 w-full rounded-md border bg-card px-3 text-sm"
           >
-            <option value="all">Todos los productos</option>
-            <option value="low">En o debajo del mínimo</option>
-            <option value="expired">Vencidos</option>
+            <option value="all">Solo productos activos</option>
+            <option value="low">En o debajo del mínimo (activos)</option>
+            <option value="expired">Vencidos (activos)</option>
+            <option value="archived">Descontinuados / Dados de baja</option>
           </select>
         </div>
         <Button asChild variant="outline">
@@ -199,11 +206,13 @@ function Stock() {
             <option value="" disabled>
               Elegir…
             </option>
-            {products.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
+            {products
+              .filter((p) => p.active)
+              .map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
           </select>
         </FormField>
         <FormField label="Tipo" htmlFor="type">
@@ -341,9 +350,12 @@ function Stock() {
             : []),
           {
             header: "Estado",
-            cell: (p) => (
-              <AvailabilityBadge value={getAvailability(p.stock_disponible, p.min_stock)} />
-            ),
+            cell: (p) =>
+              p.active ? (
+                <AvailabilityBadge value={getAvailability(p.stock_disponible, p.min_stock)} />
+              ) : (
+                <StatusBadge tone="danger">Descontinuado</StatusBadge>
+              ),
           },
         ]}
       />

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Camera, Check, Pencil, Plus, Upload } from "lucide-react";
+import { Camera, Check, Pencil, Plus, RotateCcw, Trash2, Upload } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
@@ -414,6 +414,39 @@ function ProductForm({
         <Button type="submit" className="w-full" disabled={busy}>
           {busy ? "Guardando…" : "Guardar producto"}
         </Button>
+
+        {product && (
+          <div className="pt-2 border-t mt-4">
+            <Button
+              type="button"
+              variant="destructive"
+              className="w-full gap-2"
+              disabled={busy}
+              onClick={async () => {
+                if (
+                  !confirm(
+                    `¿Descontinuar definitivamente "${product.name}"?\n\nDejará de aparecer en catálogo, mostrador, control de stock y sugerencias de reposición.`,
+                  )
+                )
+                  return;
+                setBusy(true);
+                try {
+                  await setProductActive(product.id, false, isAdmin);
+                  await qc.invalidateQueries();
+                  toast.success("Producto descontinuado y retirado de la venta");
+                  onDone();
+                } catch (e) {
+                  toast.error(errorMessage(e));
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              <Trash2 className="size-4" />
+              Descontinuar este producto
+            </Button>
+          </div>
+        )}
       </form>
     </div>
   );
@@ -793,7 +826,6 @@ function CostCell({ p }: { p: PanelProduct }) {
         Venta costo +90%
       </label>
       <Button
-        type="button"
         size="sm"
         variant="outline"
         disabled={saving}
@@ -844,7 +876,11 @@ function Productos() {
     try {
       await setProductActive(p.id, active, isAdmin);
       await qc.invalidateQueries();
-      toast.success(active ? "Visible en la tienda" : "Oculto de la tienda");
+      toast.success(
+        active
+          ? "Producto reactivado para la venta"
+          : "Producto descontinuado (retirado de venta, stock y reposición)",
+      );
     } catch (e) {
       toast.error(errorMessage(e));
     }
@@ -879,7 +915,7 @@ function Productos() {
     <>
       <PageHeader
         title="Productos"
-        description="Los productos no se borran: se ocultan de la tienda."
+        description="Gestión integral de catálogo, precios y estado activo de productos."
         actions={
           <div className="flex flex-wrap gap-2">
             {isStaff && (
@@ -924,9 +960,9 @@ function Productos() {
             setPage(0);
           }}
         >
-          <option value="activos">Activos</option>
-          <option value="ocultos">Ocultos</option>
-          <option value="todos">Todos</option>
+          <option value="activos">Solo activos para la venta</option>
+          <option value="ocultos">Descontinuados / Dados de baja</option>
+          <option value="todos">Todos los productos</option>
         </select>
         <select
           aria-label="Categoría"
@@ -1072,15 +1108,17 @@ function Productos() {
                 className: "text-right",
               },
               {
-                header: "Visible en la tienda",
-                cell: (p) => (
-                  <Switch
-                    checked={p.active}
-                    disabled={!isStaff}
-                    aria-label={`Visible en la tienda: ${p.name}`}
-                    onCheckedChange={(v) => toggle(p, v)}
-                  />
-                ),
+                header: "Estado",
+                cell: (p) =>
+                  p.active ? (
+                    <span className="inline-flex items-center rounded-full bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:text-green-400">
+                      Activo
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center rounded-full bg-destructive/10 px-2.5 py-0.5 text-xs font-medium text-destructive">
+                      Descontinuado
+                    </span>
+                  ),
               },
               ...(isStaff
                 ? [
@@ -1099,9 +1137,43 @@ function Productos() {
                           aria-label="Editar"
                           onClick={() => setEditing(p)}
                         >
-                          <Pencil />
+                          <Pencil className="size-4" />
                         </Button>
                       ),
+                    },
+                    {
+                      header: "Acción",
+                      cell: (p: PanelProduct) =>
+                        p.active ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            title="Descontinuar producto"
+                            onClick={() => {
+                              if (
+                                confirm(
+                                  `¿Descontinuar definitivamente "${p.name}"?\n\nNo aparecerá más en la tienda online, mostrador, control de stock ni pedidos de reposición.`,
+                                )
+                              ) {
+                                void toggle(p, false);
+                              }
+                            }}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 gap-1 text-xs"
+                            title="Volver a activar para venta"
+                            onClick={() => void toggle(p, true)}
+                          >
+                            <RotateCcw className="size-3.5" />
+                            Reactivar
+                          </Button>
+                        ),
                     },
                   ]
                 : []),
